@@ -209,7 +209,7 @@ export const DamageProtocolForm: React.FC<DamageProtocolFormProps> = ({
 
       {isPreviewMode ? (
         /* ==================== PRINT PREVIEW TEMPLATE ==================== */
-        <div className="p-8 md:p-12 overflow-x-auto select-text font-serif bg-white" id="print-area">
+        <div className="p-8 md:p-12 overflow-hidden select-text font-serif bg-white" id="print-area">
           <div className="w-full max-w-4xl mx-auto text-black leading-normal text-sm space-y-8 print:p-0">
             
             {/* National Header & Unit */}

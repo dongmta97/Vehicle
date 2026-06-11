@@ -117,7 +117,7 @@ const TrashItemViewer = ({ item, onClose, onRestore }: { item: any, onClose: () 
            }
         `}</style>
         
-        <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 flex items-center justify-between shrink-0">
+        <div className="bg-amber-50 border-b border-amber-200 px-6 py-2 sm:py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <AlertTriangle className="h-5 w-5 text-amber-600" />
             <div>
@@ -200,7 +200,7 @@ export const TrashTab = ({ onBack }: TrashTabProps) => {
 
   if (!isAdmin) {
     return (
-      <div className="max-w-4xl mx-auto py-16 px-4 w-full flex flex-col items-center">
+      <div className="max-w-4xl mx-auto py-16 px-1 sm:px-4 w-full flex flex-col items-center">
         <AlertTriangle className="h-12 w-12 text-red-500 mb-4" />
         <h2 className="text-xl font-bold text-stone-800">Quyền truy cập bị từ chối</h2>
         <p className="text-stone-500 mt-2 mb-6">Chỉ Admin mới có quyền truy cập Thùng rác hệ thống.</p>
@@ -218,7 +218,7 @@ export const TrashTab = ({ onBack }: TrashTabProps) => {
   );
 
   return (
-    <div className="max-w-5xl mx-auto py-8 px-4 w-full animate-fade-in font-sans">
+    <div className="max-w-5xl mx-auto py-8 px-1 sm:px-4 w-full animate-fade-in font-sans">
       <div className="flex items-center justify-between mb-8 pb-4 border-b border-stone-200">
         <div>
           <h2 className="text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2">
@@ -231,7 +231,7 @@ export const TrashTab = ({ onBack }: TrashTabProps) => {
         <div className="flex items-center gap-3">
           <button
             onClick={loadDeleted}
-            className="flex items-center gap-2 px-4 py-2 hover:bg-stone-200 text-stone-700 rounded-xl transition-all cursor-pointer font-bold text-sm bg-stone-100 shadow-sm"
+            className="flex items-center gap-2 px-1 sm:px-4 py-2 hover:bg-stone-200 text-stone-700 rounded-xl transition-all cursor-pointer font-bold text-sm bg-stone-100 shadow-sm"
           >
             <RefreshCw className="h-4 w-4" />
             <span>Làm mới</span>
@@ -251,7 +251,7 @@ export const TrashTab = ({ onBack }: TrashTabProps) => {
            placeholder="Tìm theo người xóa..." 
            value={searchDeletedBy}
            onChange={(e) => setSearchDeletedBy(e.target.value)}
-           className="px-4 py-2 rounded-xl border border-stone-200 focus:border-blue-500 focus:ring focus:ring-blue-200 transition-all outline-none text-sm w-64 bg-white"
+           className="px-1 sm:px-4 py-2 rounded-xl border border-stone-200 focus:border-blue-500 focus:ring focus:ring-blue-200 transition-all outline-none text-sm w-64 bg-white"
          />
       </div>
 
@@ -270,27 +270,27 @@ export const TrashTab = ({ onBack }: TrashTabProps) => {
             <p className="text-sm">Không có dữ liệu nào bị xóa.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div>
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-stone-50 border-b border-stone-200">
-                  <th className="px-5 py-3 text-xs font-black text-stone-500 uppercase tracking-wider">Tên dữ liệu</th>
-                  <th className="px-5 py-3 text-xs font-black text-stone-500 uppercase tracking-wider">Loại dữ liệu</th>
-                  <th className="px-5 py-3 text-xs font-black text-stone-500 uppercase tracking-wider">Người xóa</th>
-                  <th className="px-5 py-3 text-xs font-black text-stone-500 uppercase tracking-wider">Ngày xóa</th>
-                  <th className="px-5 py-3 text-right text-xs font-black text-stone-500 uppercase tracking-wider">Thao tác</th>
+                  <th className="px-5 py-2 sm:py-3 text-xs font-black text-stone-500 uppercase tracking-wider">Tên dữ liệu</th>
+                  <th className="px-5 py-2 sm:py-3 text-xs font-black text-stone-500 uppercase tracking-wider">Loại dữ liệu</th>
+                  <th className="px-5 py-2 sm:py-3 text-xs font-black text-stone-500 uppercase tracking-wider">Người xóa</th>
+                  <th className="px-5 py-2 sm:py-3 text-xs font-black text-stone-500 uppercase tracking-wider">Ngày xóa</th>
+                  <th className="px-5 py-2 sm:py-3 text-right text-xs font-black text-stone-500 uppercase tracking-wider">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-150">
                 {filteredItems.map((item) => (
                   <tr key={`${item.type}-${item.id}`} className="hover:bg-stone-50/50 transition-colors">
-                    <td className="px-5 py-4 font-bold text-sm text-stone-900">
+                    <td className="px-5 py-2 sm:py-4 font-bold text-sm text-stone-900">
                       {item.name}
                     </td>
-                    <td className="px-5 py-4 text-sm font-medium text-stone-600">
+                    <td className="px-5 py-2 sm:py-4 text-sm font-medium text-stone-600">
                       <span className="px-2.5 py-1 bg-stone-100 rounded text-stone-600 font-bold text-xs">{item.typeName}</span>
                     </td>
-                    <td className="px-5 py-4 text-sm">
+                    <td className="px-5 py-2 sm:py-4 text-sm">
                       <div className="font-bold text-stone-900 whitespace-normal">
                         Người xóa: {item.deletedByName || item.deletedBy || 'Không rõ'}
                       </div>
@@ -298,10 +298,10 @@ export const TrashTab = ({ onBack }: TrashTabProps) => {
                         Chức vụ: {getRoleLabel(item.deletedByRole)}
                       </div>
                     </td>
-                    <td className="px-5 py-4 text-sm font-medium text-stone-500">
+                    <td className="px-5 py-2 sm:py-4 text-sm font-medium text-stone-500">
                       {formatVNTime(item.deletedAt) || "Không rõ"}
                     </td>
-                    <td className="px-5 py-4 text-right whitespace-nowrap">
+                    <td className="px-5 py-2 sm:py-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={(e) => {

@@ -703,7 +703,7 @@ export function ReceptionTab({
                           link.download = previewFile.name;
                           link.click();
                         }}
-                        className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shadow inline-flex items-center gap-2"
+                        className="px-1 sm:px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shadow inline-flex items-center gap-2"
                       >
                         <FileText className="h-3.5 w-3.5" />
                         <span>Tải xuống tệp và đọc</span>
@@ -716,7 +716,7 @@ export function ReceptionTab({
           </div>
         ) : selectedVehicle ? (
           <div className="space-y-4 animate-fade-in">
-            <div className="flex items-center justify-between bg-white px-5 py-3 rounded-xl border border-stone-200 shadow-sm">
+            <div className="flex items-center justify-between bg-white px-5 py-2 sm:py-3 rounded-xl border border-stone-200 shadow-sm">
               <span className="text-xs text-stone-500 font-medium font-sans">
                 Đang hiển thị lý lý cơ học: <strong className="text-emerald-800 font-mono text-sm">{selectedVehicle.plateNumber}</strong>
               </span>
@@ -741,7 +741,7 @@ export function ReceptionTab({
           </div>
         ) : (
           <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden animate-fade-in">
-            <div className="bg-gradient-to-r from-emerald-950 to-emerald-900 px-6 py-4 flex items-center justify-between text-white border-b border-emerald-800">
+            <div className="bg-gradient-to-r from-emerald-950 to-emerald-900 px-6 py-2 sm:py-4 flex items-center justify-between text-white border-b border-emerald-800">
               <div className="flex items-center gap-2">
                 <Truck className="h-5 w-5 text-yellow-500" />
                 <h3 className="font-bold text-sm md:text-base tracking-tight uppercase">Danh mục hồ sơ xe đã tiếp nhận ({savedVehicles.length})</h3>
@@ -753,7 +753,7 @@ export function ReceptionTab({
                 Chưa có hồ sơ xe nào được tiếp nhận trong cơ sở dữ liệu. Vui lòng tạo mới cơ bản ở khung bên trái.
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div>
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-stone-50 border-b border-stone-200 text-stone-600 text-xs font-bold font-sans">

@@ -273,7 +273,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onB
           </div>
           <div>
             <h2 className="text-lg md:text-xl font-bold text-stone-900 font-sans tracking-tight">
-              Quản Lý Cán Bộ & Phân Quyền
+              Quản lý cán bộ và phân quyền
             </h2>
             <p className="text-stone-500 text-xs mt-0.5">Quản lý tài khoản quân sự biên chế kiểm tra xe của Tiểu đoàn</p>
           </div>
@@ -281,7 +281,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onB
         <div className="flex gap-2 w-full md:w-auto">
           <button
             onClick={onBack}
-            className="flex-1 md:flex-initial py-2.5 px-4 bg-stone-150 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-xl border border-stone-300 transition-all cursor-pointer text-center"
+            className="flex-1 md:flex-initial py-2.5 px-1 sm:px-4 bg-stone-150 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-xl border border-stone-300 transition-all cursor-pointer text-center"
           >
             ← Quay lại trang chủ
           </button>
@@ -300,7 +300,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onB
                 setIsActive(true);
                 setShowCreateForm(!showCreateForm);
               }}
-              className="flex-1 md:flex-initial py-2.5 px-4 bg-emerald-800 hover:bg-emerald-950 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+              className="flex-1 md:flex-initial py-2.5 px-1 sm:px-4 bg-emerald-800 hover:bg-emerald-950 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
             >
               <UserPlus className="h-4 w-4" />
               <span>{showCreateForm ? (editingUser ? 'Hủy sửa' : 'Hủy') : 'Thêm cán bộ mới'}</span>
@@ -426,7 +426,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onB
               </select>
             </div>
 
-            <div className={`md:col-span-2 flex items-center gap-3 py-1 px-4 rounded-xl border ${
+            <div className={`md:col-span-2 flex items-center gap-3 py-1 px-1 sm:px-4 rounded-xl border ${
               editingUser?.username === 'admin' ? 'bg-stone-200 border-stone-250 text-stone-500 cursor-not-allowed' : 'bg-stone-50 border-stone-200'
             }`}>
               <input
@@ -453,7 +453,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onB
                   setShowCreateForm(false);
                   setEditingUser(null);
                 }}
-                className="py-2.5 px-4 bg-stone-150 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                className="py-2.5 px-1 sm:px-4 bg-stone-150 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
               >
                 Hủy bỏ
               </button>
@@ -484,23 +484,23 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onB
             <p className="text-stone-500 text-xs mt-2 font-medium">Đang hệ thống lại danh bạ quân mạ...</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div>
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-stone-100 text-stone-600 font-bold border-b border-stone-200 uppercase tracking-wider text-[10px]">
-                  <th className="py-3 px-4">Tên đăng nhập / Quân nhân</th>
-                  <th className="py-3 px-4">Đơn vị / Cấp bậc</th>
-                  <th className="py-3 px-4">Chức vụ</th>
-                  <th className="py-3 px-4">Trạng thái</th>
-                  <th className="py-3 px-4">Ngày tạo</th>
-                  <th className="py-3 px-4 text-right">Hành động</th>
+                  <th className="py-2 sm:py-3 px-1 sm:px-4">Tên đăng nhập / Quân nhân</th>
+                  <th className="py-2 sm:py-3 px-1 sm:px-4">Đơn vị / Cấp bậc</th>
+                  <th className="py-2 sm:py-3 px-1 sm:px-4">Chức vụ</th>
+                  <th className="py-2 sm:py-3 px-1 sm:px-4">Trạng thái</th>
+                  <th className="py-2 sm:py-3 px-1 sm:px-4">Ngày tạo</th>
+                  <th className="py-2 sm:py-3 px-1 sm:px-4 text-right">Hành động</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-150">
                 {users.map((user) => {
                   return (
                   <tr key={user.uid} className={`hover:bg-stone-50/70 transition-colors ${!user.isActive ? 'bg-stone-50/40 text-stone-400' : ''}`}>
-                    <td className="py-4 px-4 font-sans">
+                    <td className="py-2 sm:py-4 px-1 sm:px-4 font-sans">
                       <div className="font-bold text-stone-900 flex items-center gap-1.5">
                         <span>{user.username}</span>
                         {user.username === currentUser.username && (
@@ -512,16 +512,16 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onB
                         <span>{user.fullName}</span>
                       </div>
                     </td>
-                    <td className="py-4 px-4">
+                    <td className="py-2 sm:py-4 px-1 sm:px-4">
                       <div className="font-medium text-stone-800">{user.unit}</div>
                       <div className="text-stone-500 mt-0.5">{user.rank}</div>
                     </td>
-                    <td className="py-4 px-4">
+                    <td className="py-2 sm:py-4 px-1 sm:px-4">
                       <span className={`inline-flex px-2.5 py-1 text-[11px] font-bold border rounded-lg ${getRoleBadgeColor(user.role)}`}>
                         {getRoleLabel(user.role)}
                       </span>
                     </td>
-                    <td className="py-4 px-4">
+                    <td className="py-2 sm:py-4 px-1 sm:px-4">
                       <button
                         onClick={() => handleToggleStatus(user)}
                         disabled={!canEdit || user.username === currentUser.username || user.username === 'admin'}
@@ -545,14 +545,14 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onB
                         )}
                       </button>
                     </td>
-                    <td className="py-4 px-4 text-stone-500 font-mono">
+                    <td className="py-2 sm:py-4 px-1 sm:px-4 text-stone-500 font-mono">
                       <div className="flex items-center gap-1.5">
                         <Calendar className="h-3 w-3" />
                         <span>{formatVNTime(user.createdAt) || "Không rõ"}</span>
                       </div>
                       <div className="text-[10px] mt-0.5 text-stone-400">Tạo bởi: {user.createdBy || 'hệ thống'}</div>
                     </td>
-                    <td className="py-4 px-4 text-right">
+                    <td className="py-2 sm:py-4 px-1 sm:px-4 text-right">
                       <div className="flex items-center justify-end gap-1.5 align-middle">
                         {canEdit && (
                           <button

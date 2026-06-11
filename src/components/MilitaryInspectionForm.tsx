@@ -711,7 +711,7 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
         </div>
         
         {section.items.length > 0 ? (
-          <div className="overflow-x-auto">
+          <div>
             <table className="w-full text-left border-collapse" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
               <thead>
                 <tr className="bg-stone-50 text-stone-700 font-bold border-b border-stone-250" style={{ fontSize: '12pt' }}>

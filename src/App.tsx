@@ -357,7 +357,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-100 text-stone-850 font-sans selection:bg-emerald-800 selection:text-white pb-12">
+    <div className="min-h-screen bg-stone-100 text-stone-850 font-sans selection:bg-emerald-800 selection:text-white pb-12 overflow-x-hidden">
       
       {/* 1. Header Banner & Branding */}
       <header className="bg-emerald-950 border-b border-emerald-900 shadow-md">
@@ -373,7 +373,7 @@ export default function App() {
                 <span>TIỂU ĐOÀN SCTH30 - CỤC HẬU CẦN-KỸ THUẬT QUÂN ĐOÀN 34</span>
               </div>
               <h1 className="text-xl md:text-2xl font-bold font-sans tracking-tight text-white mt-0.5">
-                Hệ Thống Tiếp Nhận & Quản Lý Xe Sửa Chữa
+                Hệ thống tiếp nhận và sửa chữa xe sửa chữa
               </h1>
             </div>
           </div>
@@ -486,10 +486,10 @@ export default function App() {
         {/* Main Content Areas */}
 
         {/* Beautiful Workspace Tabs Navigation */}
-        <div className="flex border-b border-stone-200 mt-6 mb-6 bg-white rounded-xl shadow-sm p-1.5 gap-1 font-sans">
+        <div className="flex border-b border-stone-200 mt-6 mb-6 bg-white rounded-xl shadow-sm p-1 flex-row gap-0.5 md:gap-1 font-sans w-full max-w-full overflow-hidden">
           <button
             onClick={() => setWorkspaceTab('INTRO')}
-            className={`flex-1 flex items-center justify-center gap-2.5 py-3 px-4 text-xs md:text-sm font-bold rounded-lg transition-all cursor-pointer ${
+            className={`flex-1 min-w-0 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2.5 py-1.5 md:py-3 px-0.5 md:px-4 text-[9px] w-[50px] sm:w-auto sm:text-[11px] md:text-sm leading-[1.2] whitespace-normal text-center font-bold rounded-lg transition-all cursor-pointer break-words ${
               workspaceTab === 'INTRO'
                 ? 'bg-emerald-800 text-white shadow-md'
                 : 'text-stone-600 hover:text-emerald-900 hover:bg-stone-50/50'
@@ -504,7 +504,7 @@ export default function App() {
                 setWorkspaceTab('RECEPTION');
                 await loadAllSavedVehicles();
               }}
-              className={`flex-1 flex items-center justify-center gap-2.5 py-3 px-4 text-xs md:text-sm font-bold rounded-lg transition-all cursor-pointer ${
+              className={`flex-1 min-w-0 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2.5 py-1.5 md:py-3 px-0.5 md:px-4 text-[9px] w-[50px] sm:w-auto sm:text-[11px] md:text-sm leading-[1.2] whitespace-normal text-center font-bold rounded-lg transition-all cursor-pointer break-words ${
                 workspaceTab === 'RECEPTION'
                   ? 'bg-emerald-800 text-white shadow-md'
                   : 'text-stone-600 hover:text-emerald-950 hover:bg-stone-50/50'
@@ -520,7 +520,7 @@ export default function App() {
                 setWorkspaceTab('INSPECTION');
                 await loadAllDamageProtocols();
               }}
-              className={`flex-1 flex items-center justify-center gap-2.5 py-3 px-4 text-xs md:text-sm font-bold rounded-lg transition-all cursor-pointer ${
+              className={`flex-1 min-w-0 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2.5 py-1.5 md:py-3 px-0.5 md:px-4 text-[9px] w-[50px] sm:w-auto sm:text-[11px] md:text-sm leading-[1.2] whitespace-normal text-center font-bold rounded-lg transition-all cursor-pointer break-words ${
                 workspaceTab === 'INSPECTION'
                   ? 'bg-emerald-800 text-white shadow-md'
                   : 'text-stone-600 hover:text-emerald-950 hover:bg-stone-50/50'
@@ -534,7 +534,7 @@ export default function App() {
             onClick={async () => {
               setWorkspaceTab('REPAIR_RECORDS');
             }}
-            className={`flex-1 flex items-center justify-center gap-2.5 py-3 px-4 text-xs md:text-sm font-bold rounded-lg transition-all cursor-pointer ${
+            className={`flex-1 min-w-0 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2.5 py-1.5 md:py-3 px-0.5 md:px-4 text-[9px] w-[50px] sm:w-auto sm:text-[11px] md:text-sm leading-[1.2] whitespace-normal text-center font-bold rounded-lg transition-all cursor-pointer break-words ${
               workspaceTab === 'REPAIR_RECORDS'
                 ? 'bg-emerald-800 text-white shadow-md'
                 : 'text-stone-600 hover:text-emerald-950 hover:bg-stone-50/50'
@@ -548,7 +548,7 @@ export default function App() {
               onClick={async () => {
                 setWorkspaceTab('OPERATIONS');
               }}
-              className={`flex-1 flex items-center justify-center gap-2.5 py-3 px-4 text-xs md:text-sm font-bold rounded-lg transition-all cursor-pointer ${
+              className={`flex-1 min-w-0 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2.5 py-1.5 md:py-3 px-0.5 md:px-4 text-[9px] w-[50px] sm:w-auto sm:text-[11px] md:text-sm leading-[1.2] whitespace-normal text-center font-bold rounded-lg transition-all cursor-pointer break-words ${
                 workspaceTab === 'OPERATIONS'
                   ? 'bg-emerald-800 text-white shadow-md'
                   : 'text-stone-600 hover:text-emerald-950 hover:bg-stone-50/50'

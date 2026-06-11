@@ -495,7 +495,12 @@ const getInspectionItems = (type?: string) => {
 };
 
 export const GeneralDisassemblyRepairForm: React.FC<Props> = ({ vehicle, existingFormId, templateName, stageName, templateType, initialData, onSaved, onClose }) => {
-  const [zoom, setZoom] = useState(100);
+  const [zoom, setZoom] = useState(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 800) {
+      return Math.max(30, Math.floor((window.innerWidth) / 7.94));
+    }
+    return 100;
+  });
   const printRef = useRef<HTMLDivElement>(null);
   
   const [vehiclesList, setVehiclesList] = useState<Vehicle[]>([]);
@@ -959,15 +964,15 @@ export const GeneralDisassemblyRepairForm: React.FC<Props> = ({ vehicle, existin
     <div className="fixed inset-0 z-50 flex flex-col bg-stone-100/90 backdrop-blur-sm overflow-hidden print:bg-white print:static print:h-auto print:overflow-visible">
       
       {/* Header controls */}
-      <div className="bg-white border-b border-stone-200 px-4 py-3 flex items-center justify-between shrink-0 print:hidden">
-        <div className="flex items-center gap-4">
+      <div className="bg-white border-b border-stone-200 px-2 sm:px-4 py-3 flex flex-col sm:flex-row items-center justify-between shrink-0 print:hidden gap-3 sm:gap-0">
+        <div className="flex items-center justify-between w-full sm:w-auto gap-4">
           <button 
             onClick={onClose}
             className="p-2 hover:bg-stone-100 rounded-full transition-colors text-stone-500 hover:text-stone-800"
           >
             <X className="w-5 h-5" />
           </button>
-          <div className="h-6 w-px bg-stone-200"></div>
+          <div className="h-6 w-px bg-stone-200 hidden sm:block"></div>
           <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-lg">
             <button onClick={() => setZoom(Math.max(50, zoom - 10))} className="px-2 py-1 hover:bg-white rounded text-sm text-stone-600 font-medium">-</button>
             <span className="text-sm font-mono text-stone-600 w-12 text-center">{zoom}%</span>
@@ -975,7 +980,7 @@ export const GeneralDisassemblyRepairForm: React.FC<Props> = ({ vehicle, existin
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-2 w-full sm:w-auto">
           <button 
             id="delete-button-selector"
             onClick={(e) => {
@@ -1041,14 +1046,14 @@ export const GeneralDisassemblyRepairForm: React.FC<Props> = ({ vehicle, existin
       </div>
 
       {/* Form Container */}
-      <div className="flex-1 overflow-y-auto w-full flex justify-center p-8 print:p-0 print:block">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden w-full flex sm:justify-center p-2 sm:p-8 print:p-0 print:block">
         <div 
           ref={printRef}
           style={{ 
             zoom: `${zoom}%`,
             fontFamily: '"Times New Roman", Times, serif'
           }}
-          className="bg-white shadow-xl max-w-[210mm] w-full min-h-[297mm] p-[20mm] mx-auto text-black print:shadow-none print:m-0 print:p-0 print:max-w-none origin-top print:!zoom-100"
+          className="bg-white shadow-xl w-[210mm] min-w-[210mm] min-h-[297mm] p-[10mm] sm:p-[20mm] mx-auto text-black print:shadow-none print:m-0 print:p-0 print:max-w-none origin-top-left sm:origin-top print:!zoom-100"
         >
           {/* Header */}
           <div className="flex justify-between items-start mb-8">

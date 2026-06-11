@@ -571,7 +571,7 @@ export const RepairRecordsTab = ({
           </p>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-2 py-4 space-y-1">
+        <div className="flex-1 overflow-y-auto px-2 py-2 sm:py-4 space-y-1">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -615,12 +615,12 @@ export const RepairRecordsTab = ({
           </div>
 
           {activeTab === "TONG_THAO" && (
-            <div className="flex w-full overflow-x-auto gap-2 mb-6 pb-2 shrink-0 border-b border-stone-200 hide-scrollbar">
+            <div className="flex w-full flex-wrap gap-2 mb-6 pb-2 shrink-0 border-b border-stone-200">
               {tongThaoSubTabs.map((subTab) => (
                 <button
                   key={subTab.id}
                   onClick={() => setTongThaoSubTab(subTab.id)}
-                  className={`flex-shrink-0 px-4 py-2 font-bold text-sm transition-all rounded-t-xl shrink-0 ${
+                  className={`flex-shrink-0 px-1 sm:px-4 py-2 font-bold text-sm transition-all rounded-t-xl shrink-0 ${
                     tongThaoSubTab === subTab.id
                       ? "bg-emerald-50 text-emerald-800 border-[1.5px] border-b-0 border-emerald-300 shadow-sm"
                       : "text-stone-500 bg-white hover:text-stone-800 hover:bg-stone-50 border border-transparent"
@@ -642,12 +642,12 @@ export const RepairRecordsTab = ({
           )}
 
           {activeTab === "SUA_MAY" && (
-            <div className="flex w-full overflow-x-auto gap-2 mb-6 pb-2 shrink-0 border-b border-stone-200 hide-scrollbar">
+            <div className="flex w-full flex-wrap gap-2 mb-6 pb-2 shrink-0 border-b border-stone-200">
               {suaMaySubTabs.map((subTab) => (
                 <button
                   key={subTab.id}
                   onClick={() => setSuaMaySubTab(subTab.id)}
-                  className={`flex-shrink-0 px-4 py-2 font-bold text-sm transition-all rounded-t-xl shrink-0 ${
+                  className={`flex-shrink-0 px-1 sm:px-4 py-2 font-bold text-sm transition-all rounded-t-xl shrink-0 ${
                     suaMaySubTab === subTab.id
                       ? "bg-emerald-50 text-emerald-800 border-[1.5px] border-b-0 border-emerald-300 shadow-sm"
                       : "text-stone-500 bg-white hover:text-stone-800 hover:bg-stone-50 border border-transparent"
@@ -669,12 +669,12 @@ export const RepairRecordsTab = ({
           )}
 
           {activeTab === "SUA_GAM" && (
-            <div className="flex w-full overflow-x-auto gap-2 mb-6 pb-2 shrink-0 border-b border-stone-200 hide-scrollbar">
+            <div className="flex w-full flex-wrap gap-2 mb-6 pb-2 shrink-0 border-b border-stone-200">
               {suaGamSubTabs.map((subTab) => (
                 <button
                   key={subTab.id}
                   onClick={() => setSuaGamSubTab(subTab.id)}
-                  className={`flex-shrink-0 px-4 py-2 font-bold text-sm transition-all rounded-t-xl shrink-0 ${
+                  className={`flex-shrink-0 px-1 sm:px-4 py-2 font-bold text-sm transition-all rounded-t-xl shrink-0 ${
                     suaGamSubTab === subTab.id
                       ? "bg-emerald-50 text-emerald-800 border-[1.5px] border-b-0 border-emerald-300 shadow-sm"
                       : "text-stone-500 bg-white hover:text-stone-800 hover:bg-stone-50 border border-transparent"
@@ -696,12 +696,12 @@ export const RepairRecordsTab = ({
           )}
 
           {activeTab === "SUA_DIEN" && (
-            <div className="flex w-full overflow-x-auto gap-2 mb-6 pb-2 shrink-0 border-b border-stone-200 hide-scrollbar">
+            <div className="flex w-full flex-wrap gap-2 mb-6 pb-2 shrink-0 border-b border-stone-200">
               {suaDienSubTabs.map((subTab) => (
                 <button
                   key={subTab.id}
                   onClick={() => setSuaDienSubTab(subTab.id)}
-                  className={`flex-shrink-0 px-4 py-2 font-bold text-sm transition-all rounded-t-xl shrink-0 ${
+                  className={`flex-shrink-0 px-1 sm:px-4 py-2 font-bold text-sm transition-all rounded-t-xl shrink-0 ${
                     suaDienSubTab === subTab.id
                       ? "bg-emerald-50 text-emerald-800 border-[1.5px] border-b-0 border-emerald-300 shadow-sm"
                       : "text-stone-500 bg-white hover:text-stone-800 hover:bg-stone-50 border border-transparent"
@@ -723,12 +723,12 @@ export const RepairRecordsTab = ({
           )}
 
           {activeTab === "SUA_VOTHE" && (
-            <div className="flex w-full overflow-x-auto gap-2 mb-6 pb-2 shrink-0 border-b border-stone-200 hide-scrollbar">
+            <div className="flex w-full flex-wrap gap-2 mb-6 pb-2 shrink-0 border-b border-stone-200">
               {suaVoTheSubTabs.map((subTab) => (
                 <button
                   key={subTab.id}
                   onClick={() => setSuaVoTheSubTab(subTab.id)}
-                  className={`flex-shrink-0 px-4 py-2 font-bold text-sm transition-all rounded-t-xl shrink-0 ${
+                  className={`flex-shrink-0 px-1 sm:px-4 py-2 font-bold text-sm transition-all rounded-t-xl shrink-0 ${
                     suaVoTheSubTab === subTab.id
                       ? "bg-emerald-50 text-emerald-800 border-[1.5px] border-b-0 border-emerald-300 shadow-sm"
                       : "text-stone-500 bg-white hover:text-stone-800 hover:bg-stone-50 border border-transparent"
@@ -750,12 +750,12 @@ export const RepairRecordsTab = ({
           )}
 
           {activeTab === "TONG_LAP" && (
-            <div className="flex w-full overflow-x-auto gap-2 mb-6 pb-2 shrink-0 border-b border-stone-200 hide-scrollbar">
+            <div className="flex w-full flex-wrap gap-2 mb-6 pb-2 shrink-0 border-b border-stone-200">
               {tongLapSubTabs.map((subTab) => (
                 <button
                   key={subTab.id}
                   onClick={() => setTongLapSubTab(subTab.id)}
-                  className={`flex-shrink-0 px-4 py-2 font-bold text-sm transition-all rounded-t-xl shrink-0 ${
+                  className={`flex-shrink-0 px-1 sm:px-4 py-2 font-bold text-sm transition-all rounded-t-xl shrink-0 ${
                     tongLapSubTab === subTab.id
                       ? "bg-emerald-50 text-emerald-800 border-[1.5px] border-b-0 border-emerald-300 shadow-sm"
                       : "text-stone-500 bg-white hover:text-stone-800 hover:bg-stone-50 border border-transparent"
@@ -777,12 +777,12 @@ export const RepairRecordsTab = ({
           )}
 
           {activeTab === "KIEM_TRA_THU_NGHIEM" && (
-            <div className="flex w-full overflow-x-auto gap-2 mb-6 pb-2 shrink-0 border-b border-stone-200 hide-scrollbar">
+            <div className="flex w-full flex-wrap gap-2 mb-6 pb-2 shrink-0 border-b border-stone-200">
               {kiemTraThuNghiemSubTabs.map((subTab) => (
                 <button
                   key={subTab.id}
                   onClick={() => setKiemTraThuNghiemSubTab(subTab.id)}
-                  className={`flex-shrink-0 px-4 py-2 font-bold text-sm transition-all rounded-t-xl shrink-0 ${
+                  className={`flex-shrink-0 px-1 sm:px-4 py-2 font-bold text-sm transition-all rounded-t-xl shrink-0 ${
                     kiemTraThuNghiemSubTab === subTab.id
                       ? "bg-emerald-50 text-emerald-800 border-[1.5px] border-b-0 border-emerald-300 shadow-sm"
                       : "text-stone-500 bg-white hover:text-stone-800 hover:bg-stone-50 border border-transparent"
@@ -839,7 +839,7 @@ export const RepairRecordsTab = ({
                             setActiveEngineFormId(undefined);
                             setShowEngineInspectionForm(true);
                           }}
-                          className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-all shadow-sm hover:shadow"
+                          className="flex items-center gap-2 px-6 py-2 sm:py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-all shadow-sm hover:shadow"
                         >
                           <Plus className="w-5 h-5" />
                           Tạo phiếu kiểm tra
@@ -907,7 +907,7 @@ export const RepairRecordsTab = ({
                                 setActiveEngineFormId(undefined);
                                 setShowEngineInspectionForm(true);
                               }}
-                              className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-all shadow-sm hover:shadow"
+                              className="flex items-center gap-2 px-6 py-2 sm:py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-all shadow-sm hover:shadow"
                             >
                               <Plus className="w-5 h-5" />
                               Tạo phiếu kiểm tra
@@ -930,7 +930,7 @@ export const RepairRecordsTab = ({
                               setActiveEngineFormId(undefined);
                               setShowEngineInspectionForm(true);
                             }}
-                            className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-all shadow-sm hover:shadow"
+                            className="flex items-center gap-2 px-6 py-2 sm:py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-all shadow-sm hover:shadow"
                           >
                             <Plus className="w-5 h-5" />
                             Tạo phiếu kiểm tra mới

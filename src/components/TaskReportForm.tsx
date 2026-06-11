@@ -18,7 +18,12 @@ interface Props {
 }
 
 export const TaskReportForm: React.FC<Props> = ({ existingFormId, initialData, onSaved, onClose }) => {
-  const [zoom, setZoom] = useState(100);
+  const [zoom, setZoom] = useState(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 800) {
+      return Math.max(30, Math.floor((window.innerWidth) / 7.94));
+    }
+    return 100;
+  });
   const printRef = useRef<HTMLDivElement>(null);
   const currentUser = getCurrentUserSession();
 
@@ -334,14 +339,14 @@ export const TaskReportForm: React.FC<Props> = ({ existingFormId, initialData, o
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto w-full flex justify-center p-8 print:p-0 print:block" onClick={() => setActiveSelectIndex(null)}>
+      <div className="flex-1 overflow-y-auto overflow-x-hidden w-full flex sm:justify-center p-2 sm:p-8 print:p-0 print:block" onClick={() => setActiveSelectIndex(null)}>
         <div 
           ref={printRef}
           style={{ 
             zoom: `${zoom}%`,
             fontFamily: '"Times New Roman", Times, serif'
           }}
-          className="bg-white shadow-xl max-w-[210mm] w-full min-h-[297mm] p-[20mm] mx-auto text-black print:shadow-none print:m-0 print:p-0 print:max-w-none origin-top print:!zoom-100 relative"
+          className="bg-white shadow-xl w-[210mm] min-w-[210mm] min-h-[297mm] p-[10mm] sm:p-[20mm] mx-auto text-black print:shadow-none print:m-0 print:p-0 print:max-w-none origin-top-left sm:origin-top print:!zoom-100 relative"
         >
           <div className="flex justify-between items-start mb-10">
             <div className="text-center font-bold flex flex-col items-center">
