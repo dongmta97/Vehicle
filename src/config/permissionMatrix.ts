@@ -52,7 +52,7 @@ export const permissionMatrix: Record<UserRole, Record<ModuleKey, PermissionLeve
     USER_MANAGEMENT: 'NONE',
   },
   kcs: {
-    RECEPTION: 'VIEW',
+    RECEPTION: 'FULL',
     INSPECTION: 'FULL',
     REPAIR: 'VIEW',
     OPERATIONS: 'NONE',
