@@ -480,14 +480,6 @@ export const dbService = {
         const historyFromDb = await DataService.load('repairHistory');
         if (Array.isArray(historyFromDb)) {
           let visibleHistory = historyFromDb;
-          const currentUser = getCurrentUserSession();
-          if (currentUser && !['admin'].includes(currentUser.role)) {
-            visibleHistory = historyFromDb.filter(h => 
-              h.createdBy === currentUser.uid ||
-              h.createdByUnit === currentUser.unit ||
-              !h.createdBy
-            );
-          }
           matchedHistory = visibleHistory
             .filter(h => h.vehicleId === matchedVehicle!.vehicleId)
             .map(h => {
@@ -503,7 +495,7 @@ export const dbService = {
               } as RepairHistory;
             });
 
-          matchedHistory.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          matchedHistory.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime());
         }
       } catch (err) {
         console.warn("Firestore 'repairHistory' fetch failed, using local history callback:", err);
@@ -518,17 +510,9 @@ export const dbService = {
       matchedVehicle = vehicles.find(v => normalizePlate(v.plateNumber) === normalizedInput) || null;
       if (matchedVehicle) {
         let visibleHistory = history;
-        const currentUser = getCurrentUserSession();
-        if (currentUser && !['admin'].includes(currentUser.role)) {
-          visibleHistory = history.filter(h =>
-            h.createdBy === currentUser.uid ||
-            h.createdByUnit === currentUser.unit ||
-            !h.createdBy
-          );
-        }
         matchedHistory = visibleHistory
           .filter(h => h.vehicleId === matchedVehicle!.vehicleId)
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime());
       }
     }
 
@@ -875,14 +859,6 @@ export const dbService = {
       const storedList = await DataService.load('damageProtocols');
       if (Array.isArray(storedList)) {
         let visibleList = storedList.filter((p: any) => !p.isDeleted);
-        const currentUser = getCurrentUserSession();
-        if (currentUser && !['admin'].includes(currentUser.role)) {
-          visibleList = visibleList.filter((p: any) => 
-            p.createdBy === currentUser.uid ||
-            p.createdByUnit === currentUser.unit ||
-            !p.createdBy
-          );
-        }
         const mapped = visibleList.map((p: any) => {
           let createdAtStr = new Date().toISOString();
           if (p.createdAt && typeof p.createdAt.toDate === "function") {
@@ -914,14 +890,6 @@ export const dbService = {
     }
 
     let visibleProtocols = protocols.filter((p: any) => !p.isDeleted);
-    const currentUser = getCurrentUserSession();
-    if (currentUser && !['admin'].includes(currentUser.role)) {
-      visibleProtocols = visibleProtocols.filter((p: any) =>
-        p.createdBy === currentUser.uid ||
-        p.createdByUnit === currentUser.unit ||
-        !p.createdBy
-      );
-    }
     visibleProtocols.forEach(p => {
       if (!combinedProtocols.some(cp => cp.protocolId === p.protocolId)) {
         combinedProtocols.push(p);
@@ -930,23 +898,20 @@ export const dbService = {
 
     // 5. Deduplicate
     const seenIds = new Set<string>();
-    const seenReports = new Set<string>();
     const deduplicatedResult: DamageProtocol[] = [];
 
     combinedProtocols.forEach(p => {
-      const pId = p.protocolId;
-      const reportNum = p.reportNumber || p.protocolId;
-      if (!seenIds.has(pId) && !seenReports.has(reportNum)) {
+      const pId = p.protocolId || p.id;
+      if (!seenIds.has(pId)) {
         seenIds.add(pId);
-        seenReports.add(reportNum);
         deduplicatedResult.push(p);
       }
     });
 
     // 6. Sort chronological descending
     deduplicatedResult.sort((a, b) => {
-      const dateA = new Date(a.createdDate || a.createdAt).getTime();
-      const dateB = new Date(b.createdDate || b.createdAt).getTime();
+      const dateA = new Date(a.updatedAt || a.createdDate || a.createdAt || 0).getTime();
+      const dateB = new Date(b.updatedAt || b.createdDate || b.createdAt || 0).getTime();
       return dateB - dateA;
     });
 
@@ -971,6 +936,21 @@ export const dbService = {
   async saveDamageProtocol(
     protocolData: Omit<DamageProtocol, 'protocolId' | 'createdAt'>
   ): Promise<DamageProtocol> {
+    const list = await this.getAllDamageProtocols();
+    const targetPlate = (protocolData.plateNumber || "").trim().toUpperCase();
+    const targetBrand = (protocolData.brand || (protocolData as any).vehicleName || "").trim().toUpperCase();
+    
+    const duplicate = list.find(p => {
+      if (p.isDeleted) return false;
+      const pPlate = (p.plateNumber || (p as any).vehiclePlateNumber || "").trim().toUpperCase();
+      const pBrand = (p.brand || (p as any).vehicleName || "").trim().toUpperCase();
+      return pPlate === targetPlate && pBrand === targetBrand;
+    });
+
+    if (duplicate) {
+      throw new Error(`Đã tồn tại biên bản giao nhận cho xe này`);
+    }
+
     const protocolId = 'DP-' + Math.random().toString(36).substring(2, 11).toUpperCase();
     const creatorAudit = getCreatorAuditParams();
     const updaterAudit = getUpdaterAuditParams();
@@ -1421,8 +1401,8 @@ export const dbService = {
         });
         
         mapped.sort((a, b) => {
-          const dateA = new Date((a as any).deletedAt || a.createdAt).getTime();
-          const dateB = new Date((b as any).deletedAt || b.createdAt).getTime();
+          const dateA = new Date((a as any).deletedAt || a.updatedAt || a.createdAt || 0).getTime();
+          const dateB = new Date((b as any).deletedAt || b.updatedAt || b.createdAt || 0).getTime();
           return dateB - dateA;
         });
         return mapped;
@@ -1582,14 +1562,6 @@ export const dbService = {
       const storedList = await DataService.load('vehicleInspectionForms');
       if (Array.isArray(storedList)) {
         let visibleList = storedList.filter((p: any) => !p.isDeleted);
-        const currentUser = getCurrentUserSession();
-        if (currentUser && !['admin'].includes(currentUser.role)) {
-          visibleList = visibleList.filter((p: any) => 
-            p.createdBy === currentUser.uid ||
-            p.createdByUnit === currentUser.unit ||
-            !p.createdBy
-          );
-        }
         
         combinedForms = visibleList.map((form: any) => ({
           ...form,
@@ -1611,14 +1583,6 @@ export const dbService = {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
           let visibleList = parsed.filter((p: any) => !p.isDeleted);
-          const currentUser = getCurrentUserSession();
-          if (currentUser && !['admin'].includes(currentUser.role)) {
-            visibleList = visibleList.filter((p: any) => 
-              p.createdBy === currentUser.uid ||
-              p.createdByUnit === currentUser.unit ||
-              !p.createdBy
-            );
-          }
           combinedForms = visibleList;
         }
       } catch (err) {
@@ -1626,6 +1590,13 @@ export const dbService = {
       }
     }
     
+    // 6. Sort chronological descending
+    combinedForms.sort((a, b) => {
+      const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+      const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
+
     return combinedForms;
   },
 
@@ -1647,12 +1618,6 @@ export const dbService = {
         
         if (vehicleForms.length > 0) {
           const found = vehicleForms[0];
-          const currentUser = getCurrentUserSession();
-          if (currentUser && !['admin'].includes(currentUser.role)) {
-            if (found.createdBy && found.createdBy !== currentUser.uid && found.createdByUnit !== currentUser.unit) {
-              return null; // Restricted
-            }
-          }
           return {
             ...found,
             createdAt: found.createdAt && typeof found.createdAt.toDate === 'function' ? found.createdAt.toDate().toISOString() : found.createdAt,
@@ -1680,12 +1645,6 @@ export const dbService = {
 
         if (vehicleForms.length > 0) {
           const found = vehicleForms[0];
-          const currentUser = getCurrentUserSession();
-          if (currentUser && !['admin'].includes(currentUser.role)) {
-            if (found.createdBy && found.createdBy !== currentUser.uid && found.createdByUnit !== currentUser.unit) {
-              return null; // Restricted
-            }
-          }
           return found;
         }
       } catch {
@@ -1701,7 +1660,8 @@ export const dbService = {
   async saveVehicleInspectionForm(
     vehicleId: string,
     plateNumber: string,
-    formData: any
+    formData: any,
+    formId?: string
   ): Promise<any> {
     const key = 'local_vehicle_inspection_forms';
     const stored = localStorage.getItem(key);
@@ -1713,7 +1673,12 @@ export const dbService = {
         list = [];
       }
     }
-    const existing = list.find((item: any) => item.vehicleId === vehicleId);
+    
+    // Assign or reuse ID
+    const safeDocId = formId || formData.id || `VIF_${Date.now()}_${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    
+    // Tìm the specific form, not any form for the vehicle!
+    const existing = list.find((item: any) => item.id === safeDocId);
 
     const creatorAudit = existing && existing.createdBy ? {
       createdBy: existing.createdBy,
@@ -1727,6 +1692,7 @@ export const dbService = {
     const updaterAudit = getUpdaterAuditParams();
 
     const data = {
+      id: safeDocId,
       vehicleId,
       plateNumber,
       formData,
@@ -1740,8 +1706,8 @@ export const dbService = {
       console.warn("Firestore 'save vehicleInspectionForms' failed:", err);
     }
 
-    // Sync Local Storage
-    list = list.filter((item: any) => item.vehicleId !== vehicleId);
+    // Sync Local Storage - Only filter out this specific form!
+    list = list.filter((item: any) => item.id !== safeDocId);
     list.push(data);
     localStorage.setItem(key, JSON.stringify(list));
 

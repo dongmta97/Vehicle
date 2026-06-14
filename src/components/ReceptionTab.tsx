@@ -82,13 +82,13 @@ export function ReceptionTab({
   handleDeleteVehicle: propsHandleDeleteVehicle,
   currentUserRole
 }: ReceptionTabProps) {
-  const canEdit = currentUserRole ? canEditModule(currentUserRole, 'RECEPTION') : false;
+  const canEdit = currentUserRole ? canEditModule(currentUserRole as any, 'RECEPTION') : false;
   const currentUser = getCurrentUserSession();
   const canEditCurrentDocument = selectedVehicle ? canEditDocument(currentUser, selectedVehicle) : true;
   const canModifyReception = canEdit && canEditCurrentDocument;
 
   const handleDeleteHistory = async (historyId: string) => {
-    const historyItem = repairHistory.find(h => h.id === historyId);
+    const historyItem = repairHistory.find(h => (h as any).id === historyId || h.historyId === historyId);
     const canDeleteHistory = canEdit && (historyItem ? canEditDocument(currentUser, historyItem) : false);
 
     if (!canDeleteHistory) {

@@ -350,11 +350,7 @@ export const RepairRecordsTab = ({
 
     console.log("FILTERED COUNT =", filteredForms.length);
 
-    filteredForms.sort(
-      (a: any, b: any) =>
-        new Date(b.createdAt || 0).getTime() -
-        new Date(a.createdAt || 0).getTime(),
-    );
+    filteredForms.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime());
 
     const finalForms = filteredForms;
     console.log("FINAL COUNT =", finalForms.length);
@@ -853,6 +849,21 @@ export const RepairRecordsTab = ({
                   <>
                     {displayedForms.length > 0 ? (
                       <>
+                        {activeSubTabDef && (
+                          <div className="flex justify-between items-center mb-4">
+                            <h3 className="font-bold text-lg text-stone-800">Phiếu kiểm tra đã lưu</h3>
+                            <button
+                              onClick={() => {
+                                setActiveEngineFormId(undefined);
+                                setShowEngineInspectionForm(true);
+                              }}
+                              className="flex items-center gap-2 px-6 py-2 sm:py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-all shadow-sm hover:shadow text-sm"
+                            >
+                              <Plus className="w-5 h-5" />
+                              Tạo phiếu kiểm tra
+                            </button>
+                          </div>
+                        )}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                           {displayedForms.map((form) => {
                             const dp = damageProtocols.find((p: any) => p.vehicleId === form.vehicleId);
@@ -900,20 +911,6 @@ export const RepairRecordsTab = ({
                             );
                           })}
                         </div>
-                        {activeSubTabDef && (
-                          <div className="flex justify-center pt-4">
-                            <button
-                              onClick={() => {
-                                setActiveEngineFormId(undefined);
-                                setShowEngineInspectionForm(true);
-                              }}
-                              className="flex items-center gap-2 px-6 py-2 sm:py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-all shadow-sm hover:shadow"
-                            >
-                              <Plus className="w-5 h-5" />
-                              Tạo phiếu kiểm tra
-                            </button>
-                          </div>
-                        )}
                       </>
                     ) : (
                       <div className="bg-white rounded-xl shadow-sm border border-stone-200 p-8 flex flex-col items-center justify-center text-center flex-1 min-h-[300px]">
@@ -985,11 +982,7 @@ export const RepairRecordsTab = ({
                   } else {
                     newList.push(savedForm);
                   }
-                  newList.sort(
-                    (a, b) =>
-                      new Date(b.createdAt || 0).getTime() -
-                      new Date(a.createdAt || 0).getTime(),
-                  );
+                  newList.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime());
                   return newList;
                 });
               }
@@ -1024,11 +1017,7 @@ export const RepairRecordsTab = ({
                   } else {
                     newList.push(savedForm);
                   }
-                  newList.sort(
-                    (a, b) =>
-                      new Date(b.createdAt || 0).getTime() -
-                      new Date(a.createdAt || 0).getTime(),
-                  );
+                  newList.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime());
                   return newList;
                 });
               }
@@ -1063,11 +1052,7 @@ export const RepairRecordsTab = ({
                   } else {
                     newList.push(savedForm);
                   }
-                  newList.sort(
-                    (a, b) =>
-                      new Date(b.createdAt || 0).getTime() -
-                      new Date(a.createdAt || 0).getTime(),
-                  );
+                  newList.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime());
                   return newList;
                 });
               }
@@ -1102,11 +1087,7 @@ export const RepairRecordsTab = ({
                   } else {
                     newList.push(savedForm);
                   }
-                  newList.sort(
-                    (a, b) =>
-                      new Date(b.createdAt || 0).getTime() -
-                      new Date(a.createdAt || 0).getTime(),
-                  );
+                  newList.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime());
                   return newList;
                 });
               }
@@ -1141,11 +1122,7 @@ export const RepairRecordsTab = ({
                   } else {
                     newList.push(savedForm);
                   }
-                  newList.sort(
-                    (a, b) =>
-                      new Date(b.createdAt || 0).getTime() -
-                      new Date(a.createdAt || 0).getTime(),
-                  );
+                  newList.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime());
                   return newList;
                 });
               }
@@ -1180,11 +1157,7 @@ export const RepairRecordsTab = ({
                   } else {
                     newList.push(savedForm);
                   }
-                  newList.sort(
-                    (a, b) =>
-                      new Date(b.createdAt || 0).getTime() -
-                      new Date(a.createdAt || 0).getTime(),
-                  );
+                  newList.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime());
                   return newList;
                 });
               }
@@ -1219,11 +1192,7 @@ export const RepairRecordsTab = ({
                   } else {
                     newList.push(savedForm);
                   }
-                  newList.sort(
-                    (a, b) =>
-                      new Date(b.createdAt || 0).getTime() -
-                      new Date(a.createdAt || 0).getTime(),
-                  );
+                  newList.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime());
                   return newList;
                 });
               }
@@ -1258,11 +1227,7 @@ export const RepairRecordsTab = ({
                   } else {
                     newList.push(savedForm);
                   }
-                  newList.sort(
-                    (a, b) =>
-                      new Date(b.createdAt || 0).getTime() -
-                      new Date(a.createdAt || 0).getTime(),
-                  );
+                  newList.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime());
                   return newList;
                 });
               }

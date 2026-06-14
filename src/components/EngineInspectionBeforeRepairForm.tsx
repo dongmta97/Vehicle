@@ -190,19 +190,6 @@ export const EngineInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, exi
         if (existingFormId) {
           foundDoc = list.find((item: any) => item.id === existingFormId && !item.isDeleted);
           if (foundDoc) matchedCount++;
-        } else if (vehicle) {
-          const targetType = templateType || 'ENGINE_PRE_REPAIR';
-          const targetVehId = normalizeStr(vehicle.vehicleId);
-          const targetVehPlate = normalizeStr(vehicle.plateNumber);
-
-          foundDoc = list.find((item: any) => {
-            const itemVehId = normalizeStr(item.vehicleId);
-            const itemPlate = normalizeStr(item.plateNumber || item.formData?.vehicleNumber || '');
-            const isMatched = (itemVehId && (itemVehId === targetVehId || itemVehId === targetVehPlate)) ||
-                              (itemPlate && (itemPlate === targetVehId || itemPlate === targetVehPlate));
-            return isMatched && item.templateType === targetType && !item.isDeleted;
-          });
-          if (foundDoc) matchedCount++;
         }
       }
 
@@ -213,25 +200,6 @@ export const EngineInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, exi
           if (dbDoc && !dbDoc.isDeleted) {
             foundDoc = dbDoc;
             matchedCount++;
-          }
-        } else if (vehicle) {
-          const targetType = templateType || 'ENGINE_PRE_REPAIR';
-          const dbForms = await DataService.load('repairForms');
-          if (Array.isArray(dbForms)) {
-            const targetVehId = normalizeStr(vehicle.vehicleId);
-            const targetVehPlate = normalizeStr(vehicle.plateNumber);
-
-            const dbDoc = dbForms.find((item: any) => {
-              const itemVehId = normalizeStr(item.vehicleId);
-              const itemPlate = normalizeStr(item.plateNumber || item.formData?.vehicleNumber || '');
-              const isMatched = (itemVehId && (itemVehId === targetVehId || itemVehId === targetVehPlate)) ||
-                                (itemPlate && (itemPlate === targetVehId || itemPlate === targetVehPlate));
-              return isMatched && item.templateType === targetType && !item.isDeleted;
-            });
-            if (dbDoc) {
-              foundDoc = dbDoc;
-              matchedCount++;
-            }
           }
         }
       }
@@ -556,7 +524,7 @@ export const EngineInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, exi
             zoom: `${zoom}%`,
             fontFamily: '"Times New Roman", Times, serif'
           }}
-          className="bg-white shadow-xl w-[210mm] min-w-[210mm] min-h-[297mm] p-[10mm] sm:p-[20mm] mx-auto text-black print:shadow-none print:m-0 print:p-0 print:max-w-none origin-top-left sm:origin-top print:!zoom-100"
+          className="bg-white text-stone-900 sm:shadow-2xl origin-top-left sm:origin-top w-full sm:w-[210mm] border-none sm:border-2 border-transparent sm:border-stone-200 print:border-none print:w-full print:p-0 print:shadow-none print:!zoom-100 min-h-[max-content] mx-auto p-4 sm:p-[20mm] font-serif"
         >
           {/* Header */}
           <div className="flex justify-between items-start mb-8">
@@ -685,8 +653,8 @@ export const EngineInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, exi
           </div>
 
           <div className="mb-6">
-            <table className="w-full border-collapse border border-black text-[15px]">
-              <thead>
+            <table className="w-full border-collapse border-y border-x sm:border border-stone-300 sm:border-black text-[15px]">
+              <thead className="hidden sm:table-header-group">
                 <tr>
                   <th className="border border-black px-2 py-2 text-center w-12 font-bold">TT</th>
                   <th className="border border-black px-2 py-2 text-center font-bold">NỘI DUNG KIỂM TRA</th>
@@ -706,22 +674,33 @@ export const EngineInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, exi
                     return (
                       <React.Fragment key={item.id || index}>
                         {showCategoryHeader && (
-                          <tr className="bg-stone-50 print:bg-stone-100 font-bold">
-                            <td colSpan={5} className="border border-black px-4 py-2 text-left text-[14px]">
+                          <tr className="bg-stone-50 print:bg-stone-100 font-bold block sm:table-row">
+                            <td colSpan={5} className="border-y border-x sm:border border-stone-300 sm:border-black px-4 py-2 text-left text-[14px] mt-4 sm:mt-0 block sm:table-cell">
                               {item.category}
                             </td>
                           </tr>
                         )}
-                        <tr>
-                          <td className="border border-black px-2 py-2 text-center">{index + 1}</td>
-                          <td className="border border-black px-2 py-2">{item.content}</td>
-                          <td className="border border-black px-2 py-2 text-center">{item.unit}</td>
-                          <td className="border border-black px-2 py-2 text-center">{item.requirement}</td>
-                          <td className="border border-black p-0">
+                        <tr className="flex flex-col sm:table-row hover:bg-stone-50/50 transition-colors border-b-2 sm:border-b border-stone-300 sm:border-black mb-2 sm:mb-0 h-auto sm:h-auto">
+                          <td className="hidden sm:table-cell border border-black px-2 py-2 text-center">{index + 1}</td>
+                          <td className="border-t border-x sm:border-y-0 sm:border-l-0 sm:border-r border-stone-300 sm:border-black p-2.5 sm:px-2 font-medium bg-stone-100 sm:bg-transparent">
+                            <span className="sm:hidden font-bold mr-1">{index + 1}.</span>
+                            {item.content}
+                          </td>
+                          <td className="border-x border-b sm:border border-stone-300 sm:border-black p-2 sm:p-2 flex sm:table-cell items-center justify-between bg-white sm:bg-transparent">
+                            <span className="sm:hidden text-xs text-stone-500 font-medium ml-1">Đơn vị đo</span>
+                            <span className="text-right sm:text-center text-stone-800">{item.unit}</span>
+                          </td>
+                          <td className="border-x border-b sm:border border-stone-300 sm:border-black p-2 flex sm:table-cell items-center justify-between bg-white sm:bg-transparent">
+                            <span className="sm:hidden text-xs text-stone-500 font-medium ml-1">Yêu cầu</span>
+                            <span className="text-right sm:text-center text-stone-800 font-medium sm:font-normal">{item.requirement}</span>
+                          </td>
+                          <td className="border-x border-b sm:border border-stone-300 sm:border-black p-1 flex sm:table-cell flex-col sm:flex-row items-stretch sm:items-center justify-between bg-white sm:bg-transparent">
+                            <span className="sm:hidden text-xs text-stone-500 font-medium ml-2 mt-1 mb-1">Thực tế</span>
+
                             <AutoResizeTextarea 
                               value={item.actual || ''}
                               onChange={(e) => handleItemChange(index, e.target.value)}
-                              className="w-full h-full min-h-[36px] bg-transparent outline-none px-2 py-2 text-center font-bold text-emerald-700 print:text-black"
+                              className="w-full h-full min-h-[36px] sm:min-h-[auto] bg-stone-50 sm:bg-transparent border border-stone-200 sm:border-transparent outline-none px-3 sm:px-2 py-2 text-left sm:text-center rounded sm:rounded-none font-bold text-stone-800 sm:text-emerald-700 print:text-black"
                             />
                           </td>
                         </tr>

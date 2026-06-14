@@ -97,23 +97,23 @@ const TableRow = React.memo(({
   onChange: (tt: number, val: string) => void; 
 }) => {
   return (
-    <tr className="hover:bg-stone-50/50 transition-colors border-b border-stone-200">
-      <td className="py-2.5 px-3 text-center border-r border-stone-250 font-mono text-stone-500 w-12" style={{ fontSize: '12pt' }}>
+    <tr className="flex flex-col sm:table-row hover:bg-stone-50/50 transition-colors border-b-2 sm:border-b border-stone-300 sm:border-stone-200 mb-2 sm:mb-0">
+      <td className="hidden sm:table-cell py-2.5 px-3 text-center border-r border-stone-250 font-mono text-stone-500 w-12" style={{ fontSize: '12pt' }}>
         {tt}
       </td>
-      <td className="py-2.5 px-3 border-r border-stone-250 font-medium text-stone-800" style={{ fontSize: '12pt' }}>
-        {name}
+      <td className="py-2.5 px-2 sm:px-3 sm:border-r border-stone-250 font-medium text-stone-800 text-[11pt] sm:text-[12pt] leading-tight sm:leading-normal bg-stone-100 sm:bg-transparent border-t border-x sm:border-transparent">
+        <span className="sm:hidden font-bold mr-1">{tt}.</span>{name} <span className="sm:hidden text-stone-500 font-normal text-[9pt]">(Số lượng: {quantity})</span>
       </td>
-      <td className="py-2.5 px-3 text-center border-r border-stone-250 font-semibold font-mono text-stone-600 w-24" style={{ fontSize: '12pt' }}>
+      <td className="hidden sm:table-cell py-2.5 px-2 sm:px-3 text-center border-r border-stone-250 font-semibold font-mono text-stone-600 w-16 sm:w-24 whitespace-normal sm:whitespace-nowrap" style={{ fontSize: '11pt' }}>
         {quantity}
       </td>
-      <td className="py-1 px-2 text-center bg-amber-50/10 w-64">
+      <td className="py-2.5 px-2 sm:px-2 text-center bg-transparent sm:bg-amber-50/10 w-full sm:w-64 border-b border-x sm:border-transparent">
         <AutoResizeTextarea 
           value={value}
           onChange={(e) => onChange(tt, e.target.value)}
-          placeholder="Nhập tình trạng thực tế"
-          className="w-full bg-white border border-stone-350 focus:border-stone-800 rounded px-2.5 py-1 text-stone-850 outline-none text-left"
-          style={{ fontSize: '12pt' }}
+          placeholder="Tình trạng"
+          className="w-full bg-white border border-stone-300 sm:border-stone-350 focus:border-stone-800 rounded px-2 sm:px-2.5 py-1.5 sm:py-1 text-stone-850 outline-none text-left"
+          style={{ fontSize: '11pt' }}
         />
       </td>
     </tr>
@@ -126,7 +126,8 @@ const TableRow = React.memo(({
 export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialForm, onReset, currentUserRole }: MilitaryInspectionFormProps) {
   const canEdit = currentUserRole ? canEditModule(currentUserRole as any, 'INSPECTION') : false;
   const currentUser = getCurrentUserSession();
-  const canModifyCurrentDocument = !initialForm ? canEdit : (canEdit && canEditDocument(currentUser, initialForm));
+  const isNewDocument = !initialForm?.id && !initialForm?.createdBy;
+  const canModifyCurrentDocument = isNewDocument ? canEdit : (canEdit && canEditDocument(currentUser, initialForm));
 
   const emptyVehicle = {
     plateNumber: "",
@@ -139,8 +140,15 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
   const activeVehicle = vehicle || emptyVehicle;
 
   // Document customization states
-  const [zoom, setZoom] = useState<number>(100);
-  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [zoom, setZoom] = useState<number>(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 800) {
+      return Math.max(30, Math.floor((window.innerWidth) / 7.94));
+    }
+    return 100;
+  });
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && window.innerWidth < 800;
+  });
 
   // Form Header Values
   const [reportNo, setReportNo] = useState<string>('');
@@ -293,8 +301,8 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
     if (!silent) {
        setIsSaving(true);
        setIsSuccessAlert(false);
+       setSaveStatus('Đang lưu...');
     }
-    setSaveStatus('Đang lưu...');
 
     let targetVehicleId = currentVehicleId;
     if (!targetVehicleId) {
@@ -308,6 +316,44 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
     if (!targetProtocolId) {
        targetProtocolId = 'DP-' + Math.random().toString(36).substring(2, 11).toUpperCase();
        setCurrentProtocolId(targetProtocolId);
+    }
+
+    // Validation for duplicate plate in damageProtocols
+    try {
+      const dpsRaw = await DataService.load('damageProtocols') || [];
+      const dpStored = localStorage.getItem('local_damage_protocols');
+      let dpLocal: any[] = [];
+      if (dpStored) {
+        try { dpLocal = JSON.parse(dpStored); } catch {}
+      }
+      
+      const allDps = Array.isArray(dpsRaw) && dpsRaw.length > 0 ? dpsRaw : dpLocal;
+      const normalizedCurrentPlate = plateNumber ? plateNumber.trim().toUpperCase() : "";
+      const normalizedCurrentBrand = vehicleName ? vehicleName.trim().toUpperCase() : "";
+
+      const duplicateNode = allDps.find((p: any) => {
+        const idMatches = p.protocolId === targetProtocolId || p.id === targetProtocolId;
+        if (idMatches || p.isDeleted) return false;
+        
+        const pPlate = p.plateNumber || p.vehiclePlateNumber || "";
+        const normalizedPPlate = pPlate ? pPlate.trim().toUpperCase() : "";
+        
+        const pBrand = p.brand || p.vehicleName || (p.headerData?.vehicleName) || "";
+        const normalizedPBrand = pBrand ? pBrand.trim().toUpperCase() : "";
+        
+        return normalizedPPlate === normalizedCurrentPlate && normalizedPBrand === normalizedCurrentBrand;
+      });
+
+      if (duplicateNode) {
+        if (!silent) {
+          alert('Đã tồn tại biên bản giao nhận cho xe này');
+          setIsSaving(false);
+          setSaveStatus('');
+        }
+        return;
+      }
+    } catch (err) {
+      console.warn("Lỗi kiểm tra trùng biển số:", err);
     }
 
     const auditParams = getCreatorAuditParams();
@@ -472,34 +518,18 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
 
   // Load saved dynamic form from Firestore/LocalStorage on load
   useEffect(() => {
-    const loadSavedForm = async () => {
-      const targetId = vehicle?.vehicleId;
-      if (!targetId) {
-        initNewForm();
-        return;
-      }
-      try {
-        const dps = await dbService.getDamageProtocols(targetId);
-        const savedData = dps.find((p: any) => p.formData && p.headerData && !p.isDeleted);
-        if (savedData) {
-          setRecoveredData(savedData);
-          setShowRecoveryModal(true);
-        } else {
-          initNewForm();
-        }
-      } catch (err) {
-        console.error("Failed to load historical inspection form:", err);
-        initNewForm();
-      }
-    };
-    loadSavedForm();
-  }, [vehicle]);
+    if (initialForm?.protocolId || initialForm?.id) {
+      return;
+    }
+
+    // CREATE MODE
+    initNewForm();
+  }, [vehicle, initialForm]);
 
   // Debounced auto save effect triggers 1000ms after changes
   useEffect(() => {
     if (!canEdit || !isInitialized || !hasUserInteracted.current) return;
 
-    setSaveStatus('Đang lưu...');
     const delayDebounceFn = setTimeout(() => {
       executeSave(true);
     }, 1000);
@@ -714,11 +744,11 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
           <div>
             <table className="w-full text-left border-collapse" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
               <thead>
-                <tr className="bg-stone-50 text-stone-700 font-bold border-b border-stone-250" style={{ fontSize: '12pt' }}>
-                  <th className="py-2.5 px-3 text-center border-r border-stone-250 w-12">TT</th>
-                  <th className="py-2.5 px-3 border-r border-stone-250">Tên cụm - chi tiết</th>
-                  <th className="py-2.5 px-3 text-center border-r border-stone-250 w-24">Biên chế</th>
-                  <th className="py-2.5 px-3 text-center w-64">Thực tế</th>
+                <tr className="bg-stone-50 text-stone-700 font-bold border-b border-stone-250 text-[11px] sm:text-[12pt]">
+                  <th className="py-2.5 px-1.5 sm:px-3 text-center border-r border-stone-250 w-8 sm:w-12">TT</th>
+                  <th className="py-2.5 px-2 sm:px-3 border-r border-stone-250">Tên cụm - chi tiết</th>
+                  <th className="py-2.5 px-1.5 sm:px-3 text-center border-r border-stone-250 w-16 sm:w-24 leading-tight">Biên chế</th>
+                  <th className="py-2.5 px-1.5 sm:px-3 text-center w-32 sm:w-64 leading-tight">Thực tế</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-200">
@@ -745,58 +775,57 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
   }, [formData, handleRowChange]);
 
   return (
-    <div className={`flex flex-col h-full bg-stone-900 border border-stone-800 shadow-xl overflow-hidden ${isFullscreen ? 'fixed inset-0 z-50' : 'relative rounded-2xl'}`} style={{ maxHeight: isFullscreen ? '100vh' : '820px' }}>
+    <div className={`flex flex-col h-full bg-stone-100 border border-stone-200 shadow-xl overflow-hidden ${isFullscreen ? 'fixed inset-0 z-50' : 'relative rounded-2xl'}`} style={{ maxHeight: isFullscreen ? '100vh' : '820px' }}>
       
       {/* Upper Control Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 bg-stone-950 border-b border-stone-800">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 bg-white border-b border-stone-200">
         <div className="flex items-center gap-2">
-          <FileText className="h-5 w-5 text-amber-500" />
-          <span className="text-xs font-bold uppercase tracking-wider text-stone-300">Biên bản bàn giao dã chiến (A4)</span>
-          <span className="px-2 py-0.5 text-xs font-bold uppercase tracking-wider bg-emerald-950 text-emerald-400 rounded-md border border-emerald-800">{plateNumber || "NHẬP TAY / BẢN NHÁP"}</span>
+          <FileText className="h-5 w-5 text-emerald-600" />
+          <span className="text-xs font-bold uppercase tracking-wider text-stone-700">Biên bản bàn giao dã chiến (A4)</span>
+          <span className="px-2 py-0.5 text-xs font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 rounded-md border border-emerald-200">{plateNumber || "NHẬP TAY / BẢN NHÁP"}</span>
         </div>
 
         {/* Dynamic Zoom levels based on user request */}
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex items-center gap-1 bg-stone-900 border border-stone-800 px-1.5 py-0.5 rounded-lg text-xs font-mono">
-            <span className="mr-1.5 text-stone-400 font-sans text-3xs uppercase tracking-wider">Tỷ lệ:</span>
+          <div className="hidden sm:flex items-center gap-1 bg-stone-50 border border-stone-200 px-1.5 py-0.5 rounded-lg text-xs font-mono">
+            <span className="mr-1.5 text-stone-500 font-sans text-3xs uppercase tracking-wider">Tỷ lệ:</span>
             {[50, 75, 100, 125, 150, 200].map((z) => (
               <button
                 key={z}
                 onClick={() => setZoom(z)}
-                className={`px-1.5 py-0.5 rounded transition-all text-3xs font-bold cursor-pointer ${zoom === z ? 'bg-amber-600 text-white shadow-sm' : 'hover:bg-stone-800 text-stone-400 hover:text-stone-200'}`}
+                className={`px-1.5 py-0.5 rounded transition-all text-3xs font-bold cursor-pointer ${zoom === z ? 'bg-emerald-600 text-white shadow-sm' : 'hover:bg-white text-stone-600 hover:text-stone-800'}`}
               >
                 {z}%
               </button>
             ))}
           </div>
-
-          {/* Fullscreen Button */}
-          <button 
-            onClick={() => setIsFullscreen(!isFullscreen)} 
-            className="p-1.5 hover:bg-stone-800 text-stone-300 hover:text-white bg-stone-900 border border-stone-800 rounded-lg transition-colors cursor-pointer"
-            title={isFullscreen ? "Đóng toàn màn hình" : "Mở toàn màn hình"}
+          
+          <button
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            className="p-1 hover:bg-stone-100 text-stone-500 hover:text-stone-800 rounded-lg cursor-pointer transition-colors"
+            title={isFullscreen ? "Thu nhỏ lại màn hình" : "Mở rộng toàn màn hình"}
           >
             {isFullscreen ? <Minimize2 className="h-4.5 w-4.5" /> : <Maximize2 className="h-4.5 w-4.5" />}
           </button>
 
           {/* Actions Button Bar */}
-          <div className="h-5 w-[1px] bg-stone-800 hidden md:block"></div>
+          <div className="h-5 w-[1px] bg-stone-200 hidden md:block"></div>
 
           {/* Autosave Realtime Status Indicator */}
           {saveStatus && (
             <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
               saveStatus === 'Đang lưu...' 
-                ? 'text-amber-400 animate-pulse bg-amber-950/40 border border-amber-900/50' 
+                ? 'text-amber-600 animate-pulse bg-amber-50 border border-amber-200' 
                 : saveStatus === 'Đã lưu' 
-                ? 'text-emerald-400 bg-emerald-950/40 border border-emerald-900/50' 
-                : 'text-rose-400 bg-rose-950/40 border border-rose-900/50'
+                ? 'text-emerald-600 bg-emerald-50 border border-emerald-200' 
+                : 'text-rose-600 bg-rose-50 border border-rose-200'
             }`}>
               <span className={`h-1 w-1 rounded-full ${
                 saveStatus === 'Đang lưu...' 
-                  ? 'bg-amber-400' 
+                  ? 'bg-amber-500' 
                   : saveStatus === 'Đã lưu' 
-                  ? 'bg-emerald-405' 
-                  : 'bg-rose-400'
+                  ? 'bg-emerald-500' 
+                  : 'bg-rose-500'
               }`} />
               <span>{saveStatus}</span>
             </div>
@@ -808,7 +837,7 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
                 <button 
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="px-4 py-1.5 bg-emerald-800 hover:bg-emerald-700 disabled:bg-emerald-950 text-white font-bold rounded-lg flex items-center gap-1.5 text-xs transition-all cursor-pointer"
+                  className="px-4 py-1.5 bg-emerald-700 hover:bg-emerald-800 disabled:bg-emerald-900 text-white font-bold rounded-lg flex items-center gap-1.5 text-xs transition-all cursor-pointer"
                 >
                   <Save className="h-3.5 w-3.5" />
                   <span>{isSaving ? 'Đang lưu...' : 'Lưu'}</span>
@@ -820,11 +849,11 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
                       initNewForm();
                     }
                   }}
-                  className="px-4 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-lg flex items-center gap-1.5 text-xs transition-all cursor-pointer"
+                  className="px-4 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 font-bold rounded-lg flex items-center gap-1.5 text-xs transition-all cursor-pointer"
                   title="Khởi tạo biểu mẫu trống để viết một biên bản giao nhận mới tinh"
                 >
                   <Plus className="h-3.5 w-3.5" />
-                  <span>Biên bản mới</span>
+                  <span className="hidden sm:inline">Biên bản mới</span>
                 </button>
 
                 <button 
@@ -850,36 +879,36 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
                       }
                     }
                   }}
-                  className="px-4 py-1.5 bg-red-700 hover:bg-red-650 text-white font-bold rounded-lg flex items-center gap-1.5 text-xs transition-colors cursor-pointer"
+                  className="px-4 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-bold rounded-lg flex items-center gap-1.5 text-xs transition-colors cursor-pointer"
                   title="Xóa sạch dữ liệu đã nhập trên biểu mẫu"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                  <span>Xóa</span>
+                  <span className="hidden sm:inline">Xóa</span>
                 </button>
               </>
             )}
 
             <button 
               onClick={exportToWord}
-              className="px-3.5 py-1.5 bg-stone-800 hover:bg-stone-750 text-stone-300 hover:text-white border border-stone-700 rounded-lg flex items-center gap-1.5 text-xs transition-all cursor-pointer"
+              className="px-3.5 py-1.5 bg-stone-50 hover:bg-stone-100 text-stone-600 hover:text-stone-800 border border-stone-200 rounded-lg flex items-center gap-1.5 text-xs transition-all cursor-pointer"
               title="Xuất mẫu Microsoft Word .doc dã ngoại"
             >
               <Download className="h-3.5 w-3.5" />
-              <span>Xuất Word</span>
+              <span className="hidden sm:inline">Xuất Word</span>
             </button>
 
             <button 
               onClick={handlePrint}
-              className="px-3.5 py-1.5 bg-stone-800 hover:bg-stone-750 text-stone-300 hover:text-white border border-stone-700 rounded-lg flex items-center gap-1.5 text-xs transition-all cursor-pointer"
+              className="px-3.5 py-1.5 bg-stone-50 hover:bg-stone-100 text-stone-600 hover:text-stone-800 border border-stone-200 rounded-lg flex items-center gap-1.5 text-xs transition-all cursor-pointer"
               title="In dã ngoại"
             >
               <Printer className="h-3.5 w-3.5" />
-              <span>In</span>
+              <span className="hidden sm:inline">In</span>
             </button>
 
             <button 
               onClick={onClose}
-              className="px-3.5 py-1.5 bg-stone-950 border border-stone-800 hover:bg-stone-900 text-stone-400 hover:text-white rounded-lg text-xs transition-all cursor-pointer"
+              className="px-3.5 py-1.5 bg-stone-100 border border-stone-200 hover:bg-stone-200 text-stone-600 hover:text-stone-900 rounded-lg text-xs transition-all cursor-pointer font-bold"
             >
               Đóng
             </button>
@@ -899,16 +928,15 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
       )}
 
       {/* Scrollable Container and Custom A4 Frame styling */}
-      <div className="flex-1 overflow-auto bg-stone-950/80 p-6 flex justify-center items-start overflow-y-auto">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden w-full flex sm:justify-center p-0 sm:p-8 print:p-0 print:block bg-white sm:bg-stone-50/80">
         <div 
-          className="bg-white text-stone-900 shadow-2xl transition-all duration-200 origin-top border-2 border-stone-950 print:border-none print:w-full print:p-0 print:shadow-none"
+          className="bg-white text-stone-900 sm:shadow-2xl origin-top-left sm:origin-top w-full sm:w-auto border-none sm:border-2 border-transparent sm:border-stone-200 print:border-none print:w-full print:p-0 print:shadow-none print:!zoom-100 min-h-full sm:min-h-[350mm]"
           style={{
             fontFamily: "'Times New Roman', Times, serif",
-            transform: `scale(${zoom / 100})`,
-            width: '260mm',
-            minHeight: '350mm',
-            padding: '20mm 20mm 20mm 20mm',
-            marginBottom: `${Math.max(0, (zoom - 100) * 3)}px`,
+            zoom: `${zoom}%`,
+            width: typeof window !== 'undefined' && window.innerWidth < 800 ? '100%' : '260mm',
+            minHeight: typeof window !== 'undefined' && window.innerWidth < 800 ? '100%' : '350mm',
+            padding: typeof window !== 'undefined' && window.innerWidth < 800 ? '10mm 4mm' : '20mm',
             marginRight: 'auto',
             marginLeft: 'auto'
           }}
@@ -939,7 +967,7 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
 
           <fieldset disabled={!canEdit} className="border-0 p-0 m-0 min-w-0">
           {/* Form Header block */}
-          <div className="grid grid-cols-2 gap-4 items-start text-center mb-8 pb-4 border-b border-stone-200">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start text-center mb-8 pb-4 border-b border-stone-200">
             <div className="space-y-1">
               <div className="font-bold text-stone-900 uppercase whitespace-nowrap" style={{ fontSize: '13pt' }}>CỤC HẬU CẦN - KỸ THUẬT QUÂN ĐOÀN 34</div>
               <div className="font-bold text-stone-900 uppercase underline decoration-1 underline-offset-4 whitespace-nowrap" style={{ fontSize: '13pt' }}>TIỂU ĐOÀN SCTH30</div>
@@ -993,8 +1021,8 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
               I. THÔNG TIN CHUNG PHƯƠNG TIỆN & ĐƠN VỊ BÀN GIAO
             </h2>
 
-            <div className="grid grid-cols-2 gap-x-8 gap-y-4" style={{ fontSize: '13pt' }}>
-              <div className="flex items-center gap-1.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4" style={{ fontSize: '13pt' }}>
+              <div className="flex flex-col sm:flex-row sm:items-center items-start gap-1 sm:gap-1.5 w-full">
                 <span className="font-bold text-stone-700 whitespace-nowrap">Tên xe:</span>
                 <input 
                   type="text" 
@@ -1004,16 +1032,16 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
                     setVehicleName(e.target.value);
                   }}
                   placeholder="Hyundai County"
-                  className="flex-1 bg-stone-50 border-b border-stone-400 focus:border-stone-850 px-2 py-0.5 outline-none font-bold font-serif text-stone-900"
+                  className="flex-1 w-full sm:w-auto bg-stone-50 border-b border-stone-400 focus:border-stone-850 px-2 py-0.5 outline-none font-bold font-serif text-stone-900"
                   style={{ fontSize: '13pt' }}
                 />
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-col sm:flex-row sm:items-center items-start gap-1 sm:gap-1.5 w-full">
                 <span className="font-bold text-stone-700 whitespace-nowrap">Đơn vị nhận:</span>
                 <span className="px-2 py-0.5 font-bold text-stone-900 bg-stone-100 border border-stone-300 rounded font-serif" style={{ fontSize: '13pt' }}>Tiểu đoàn SCTH30</span>
               </div>
               
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-col sm:flex-row sm:items-center items-start gap-1 sm:gap-1.5 w-full">
                 <span className="font-bold text-stone-700 whitespace-nowrap">Mức sửa chữa:</span>
                 <input 
                   type="text" 
@@ -1023,11 +1051,11 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
                     setRepairLevel(e.target.value);
                   }}
                   placeholder="Nhập mức sửa chữa..."
-                  className="flex-1 bg-stone-50 border-b border-stone-400 focus:border-stone-850 px-2 py-0.5 outline-none font-semibold font-serif"
+                  className="flex-1 w-full sm:w-auto bg-stone-50 border-b border-stone-400 focus:border-stone-850 px-2 py-0.5 outline-none font-semibold font-serif"
                   style={{ fontSize: '13pt' }}
                 />
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-col sm:flex-row sm:items-center items-start gap-1 sm:gap-1.5 w-full">
                 <span className="font-bold text-stone-700 whitespace-nowrap">Nhóm sửa chữa:</span>
                 <input 
                   type="text" 
@@ -1037,12 +1065,12 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
                     setRepairGroup(e.target.value);
                   }}
                   placeholder="Nhập nhóm sửa chữa..."
-                  className="flex-1 bg-stone-50 border-b border-stone-400 focus:border-stone-850 px-2 py-0.5 outline-none font-semibold font-serif"
+                  className="flex-1 w-full sm:w-auto bg-stone-50 border-b border-stone-400 focus:border-stone-850 px-2 py-0.5 outline-none font-semibold font-serif"
                   style={{ fontSize: '13pt' }}
                 />
               </div>
 
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-col sm:flex-row sm:items-center items-start gap-1 sm:gap-1.5 w-full">
                 <span className="font-bold text-stone-700 whitespace-nowrap">Số đăng ký (SĐK):</span>
                 <input 
                   type="text" 
@@ -1052,11 +1080,11 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
                     setPlateNumber(e.target.value);
                   }}
                   placeholder="Nhập SĐK..."
-                  className="flex-1 bg-stone-50 border-b border-stone-400 focus:border-stone-850 px-2 py-0.5 outline-none font-bold text-emerald-950 font-serif md:text-emerald-900"
+                  className="flex-1 w-full sm:w-auto bg-stone-50 border-b border-stone-400 focus:border-stone-850 px-2 py-0.5 outline-none font-bold text-emerald-950 font-serif md:text-emerald-900"
                   style={{ fontSize: '13pt' }}
                 />
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-col sm:flex-row sm:items-center items-start gap-1 sm:gap-1.5 w-full">
                 <span className="font-bold text-stone-700 whitespace-nowrap">Đơn vị giao:</span>
                 <input 
                   type="text" 
@@ -1066,12 +1094,12 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
                     setGiverUnit(e.target.value);
                   }}
                   placeholder="Nhập đơn vị giao..."
-                  className="flex-1 bg-amber-50/20 border-b border-amber-300 focus:border-stone-850 px-2 py-0.5 outline-none font-semibold font-serif"
+                  className="flex-1 w-full sm:w-auto bg-amber-50/20 border-b border-amber-300 focus:border-stone-850 px-2 py-0.5 outline-none font-semibold font-serif"
                   style={{ fontSize: '13pt' }}
                 />
               </div>
 
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-col sm:flex-row sm:items-center items-start gap-1 sm:gap-1.5 w-full">
                 <span className="font-bold text-stone-700 whitespace-nowrap">Số khung (SK) lý lịch:</span>
                 <input 
                   type="text" 
@@ -1081,11 +1109,11 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
                     setChassisNumber(e.target.value);
                   }}
                   placeholder="Nhập số khung..."
-                  className="flex-1 bg-stone-50 border-b border-stone-400 focus:border-stone-850 px-2 py-0.5 outline-none font-mono font-semibold"
+                  className="flex-1 w-full sm:w-auto bg-stone-50 border-b border-stone-400 focus:border-stone-850 px-2 py-0.5 outline-none font-mono font-semibold"
                   style={{ fontSize: '13pt' }}
                 />
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-col sm:flex-row sm:items-center items-start gap-1 sm:gap-1.5 w-full">
                 <span className="font-bold text-stone-700 whitespace-nowrap">Số khung (SK) thực tế:</span>
                 <input 
                   type="text" 
@@ -1095,12 +1123,12 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
                     setActualChassisNumber(e.target.value);
                   }}
                   placeholder="Nhập số khung thực tế..."
-                  className="flex-1 bg-stone-50 border-b border-stone-400 focus:border-stone-850 px-2 py-0.5 outline-none font-mono font-bold text-stone-900"
+                  className="flex-1 w-full sm:w-auto bg-stone-50 border-b border-stone-400 focus:border-stone-850 px-2 py-0.5 outline-none font-mono font-bold text-stone-900"
                   style={{ fontSize: '13pt' }}
                 />
               </div>
 
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-col sm:flex-row sm:items-center items-start gap-1 sm:gap-1.5 w-full">
                 <span className="font-bold text-stone-700 whitespace-nowrap">Số máy (SM) lý lịch:</span>
                 <input 
                   type="text" 
@@ -1110,11 +1138,11 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
                     setEngineNumber(e.target.value);
                   }}
                   placeholder="Nhập số máy..."
-                  className="flex-1 bg-stone-50 border-b border-stone-400 focus:border-stone-850 px-2 py-0.5 outline-none font-mono font-semibold"
+                  className="flex-1 w-full sm:w-auto bg-stone-50 border-b border-stone-400 focus:border-stone-850 px-2 py-0.5 outline-none font-mono font-semibold"
                   style={{ fontSize: '13pt' }}
                 />
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-col sm:flex-row sm:items-center items-start gap-1 sm:gap-1.5 w-full">
                 <span className="font-bold text-stone-700 whitespace-nowrap">Số máy (SM) thực tế:</span>
                 <input 
                   type="text" 
@@ -1124,7 +1152,7 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
                     setActualEngineNumber(e.target.value);
                   }}
                   placeholder="Nhập số máy thực tế..."
-                  className="flex-1 bg-stone-50 border-b border-stone-400 focus:border-stone-850 px-2 py-0.5 outline-none font-mono font-bold text-stone-900"
+                  className="flex-1 w-full sm:w-auto bg-stone-50 border-b border-stone-400 focus:border-stone-850 px-2 py-0.5 outline-none font-mono font-bold text-stone-900"
                   style={{ fontSize: '13pt' }}
                 />
               </div>

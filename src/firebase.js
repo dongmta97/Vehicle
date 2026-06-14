@@ -134,7 +134,7 @@ export const DataService = {
     let data = applyModuleMigration(collectionName, payload);
     let docId = data.id;
     if (!docId) {
-      if (collectionName === 'damageProtocols' || collectionName === 'vehicleInspectionForms') {
+      if (collectionName === 'damageProtocols') {
         docId = data.protocolId;
       } else if (collectionName === 'repairHistory') {
         docId = data.historyId;
@@ -143,7 +143,8 @@ export const DataService = {
       }
     }
     if (!docId) {
-      docId = data.protocolId || data.historyId || data.vehicleId || Math.random().toString(36).substring(2, 11).toUpperCase();
+      // Create a unique ID. NEVER fall back to vehicleId for documents in other collections!
+      docId = data.protocolId || data.historyId || `DOC_${Date.now()}_${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
     }
 
     if (!isFirebaseConfigured || !db) {

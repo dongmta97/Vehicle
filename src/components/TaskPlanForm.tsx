@@ -35,6 +35,7 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, initialData, onS
       unit: 'Xưởng SCTH30',
       subUnit: 'Đại đội sửa chữa Xe-máy',
       week: '',
+      month: (new Date().getMonth() + 1).toString().padStart(2, '0'),
       year: new Date().getFullYear().toString(),
       createdBy: currentUser?.fullName || '',
       createdDate: new Date().toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
@@ -374,6 +375,15 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, initialData, onS
                     type="text" 
                     value={formData.week}
                     onChange={(e) => setFormData({...formData, week: e.target.value})}
+                    className="w-12 text-center border-b border-dotted border-black bg-transparent outline-none pb-0" 
+                  />
+               </div>
+               <div className="flex items-end gap-1">
+                 <span>Tháng</span>
+                 <input 
+                    type="text" 
+                    value={formData.month || ''}
+                    onChange={(e) => setFormData({...formData, month: e.target.value})}
                     className="w-12 text-center border-b border-dotted border-black bg-transparent outline-none pb-0" 
                   />
                </div>

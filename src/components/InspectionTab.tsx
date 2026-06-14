@@ -82,6 +82,10 @@ export function InspectionTab({
     const pBrand = (p.brand || '').toLowerCase();
     const pReportNumber = (p.reportNumber || '').toLowerCase();
     return pPlate.includes(q) || pBrand.includes(q) || pReportNumber.includes(q);
+  }).sort((a: any, b: any) => {
+    const dateA = new Date(a.updatedAt || a.createdDate || a.createdAt || 0).getTime();
+    const dateB = new Date(b.updatedAt || b.createdDate || b.createdAt || 0).getTime();
+    return dateB - dateA;
   });
 
   const filteredVehicleInspectionForms = allVehicleInspectionForms.filter(form => {
@@ -91,6 +95,10 @@ export function InspectionTab({
     const displayPlateNumber = (form.plateNumber || vehicleInfo?.plateNumber || '').toLowerCase();
     const vehicleName = (form.vehicleName || '').toLowerCase();
     return displayPlateNumber.includes(q) || vehicleName.includes(q);
+  }).sort((a: any, b: any) => {
+    const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+    const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+    return dateB - dateA;
   });
 
   useEffect(() => {
@@ -220,7 +228,7 @@ export function InspectionTab({
   };
 
   const handleDeleteAndSync = async (id: string) => {
-    const protocol = allDamageProtocols.find(p => p.protocolId === id || p.id === id);
+    const protocol = allDamageProtocols.find(p => p.protocolId === id || (p as any).id === id);
     if (!canModifyInspectionDocument(protocol)) {
       alert('Bạn chỉ có quyền xem dữ liệu.');
       return;

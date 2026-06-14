@@ -167,19 +167,6 @@ export const EngineComponentDisassemblyForm: React.FC<Props> = ({ vehicle, exist
         if (existingFormId) {
           foundDoc = list.find((item: any) => item.id === existingFormId && !item.isDeleted);
           if (foundDoc) matchedCount++;
-        } else if (vehicle) {
-          const targetType = templateType || 'ENGINE_COMPONENT_DISASSEMBLY';
-          const targetVehId = normalizeStr(vehicle.vehicleId);
-          const targetVehPlate = normalizeStr(vehicle.plateNumber);
-
-          foundDoc = list.find((item: any) => {
-            const itemVehId = normalizeStr(item.vehicleId);
-            const itemPlate = normalizeStr(item.plateNumber || item.formData?.vehicleNumber || '');
-            const isMatched = (itemVehId && (itemVehId === targetVehId || itemVehId === targetVehPlate)) ||
-                              (itemPlate && (itemPlate === targetVehId || itemPlate === targetVehPlate));
-            return isMatched && item.templateType === targetType && !item.isDeleted;
-          });
-          if (foundDoc) matchedCount++;
         }
       }
 
@@ -190,25 +177,6 @@ export const EngineComponentDisassemblyForm: React.FC<Props> = ({ vehicle, exist
           if (dbDoc && !dbDoc.isDeleted) {
             foundDoc = dbDoc;
             matchedCount++;
-          }
-        } else if (vehicle) {
-          const targetType = templateType || 'GENERAL_DISASSEMBLY_REPAIR';
-          const dbForms = await DataService.load('repairForms');
-          if (Array.isArray(dbForms)) {
-            const targetVehId = normalizeStr(vehicle.vehicleId);
-            const targetVehPlate = normalizeStr(vehicle.plateNumber);
-
-            const dbDoc = dbForms.find((item: any) => {
-              const itemVehId = normalizeStr(item.vehicleId);
-              const itemPlate = normalizeStr(item.plateNumber || item.formData?.vehicleNumber || '');
-              const isMatched = (itemVehId && (itemVehId === targetVehId || itemVehId === targetVehPlate)) ||
-                                (itemPlate && (itemPlate === targetVehId || itemPlate === targetVehPlate));
-              return isMatched && item.templateType === targetType && !item.isDeleted;
-            });
-            if (dbDoc) {
-              foundDoc = dbDoc;
-              matchedCount++;
-            }
           }
         }
       }
@@ -225,55 +193,14 @@ export const EngineComponentDisassemblyForm: React.FC<Props> = ({ vehicle, exist
         }
       } else {
         if (!existingFormId) {
-          let nextSoPhieu = 1;
           try {
-            const dbForms = await DataService.load('repairForms');
-            if (Array.isArray(dbForms)) {
-              const disassemblyForms = dbForms.filter((f: any) => f.templateType === (templateType || 'GENERAL_DISASSEMBLY_REPAIR') && !f.isDeleted);
-              if (disassemblyForms.length > 0) {
-                const maxSoPhieu = Math.max(...disassemblyForms.map((f: any) => {
-                  const np = parseInt(f.formData?.soPhieu || '0', 10);
-                  return isNaN(np) ? 0 : np;
-                }));
-                nextSoPhieu = maxSoPhieu + 1;
-              }
-            }
-          } catch (e) {
-            console.warn('Cannot load previous forms', e);
-          }
-
-          const defaultItems = getInspectionItems(templateType);
-          const nowStr = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
-          setFormData({
-            vehicleName: vehicle?.brand || '',
-            vehicleNumber: vehicle?.plateNumber || '',
-            xxNumber1: '',
-            stageNumber: '',
-            xxNumber2: '',
-            sheetNumber: '',
-            tenTBKT: vehicle?.brand || '',
-            soHieu: vehicle?.plateNumber || '',
-            soXX: '',
-            cumCongDoan: 'Tổng tháo cụm động cơ',
-            toSo: '1',
-            soTo: '1',
-            soPhieu: nextSoPhieu.toString(),
-            items: defaultItems.map((item: any) => ({ ...item })),
-            conclusion: '',
-            ketLuan: "Tổng tháo cụm động cơ được thực hiện đúng Quy trình công nghệ.",
-            ngayLap: `${String(new Date().getDate()).padStart(2, '0')}/${String(new Date().getMonth() + 1).padStart(2, '0')}/${new Date().getFullYear()}`,
-            toTruong: "",
-            daiDoiTruong: "Trần Văn Giáp",
-            nhanVienKCS: "Nguyễn Văn Đăng",
-            chiHuyTieuDoan: "Thiếu tá Thừa Trung Hải",
-            status: 'DRAFT',
-            originalStatus: 'DRAFT',
-            createdAt: nowStr,
-            updatedAt: nowStr,
-            completedAt: null,
-            approvedAt: null,
-            updatedBy: ''
-          });
+            const defaultItems = typeof getInspectionItems === 'function' ? getInspectionItems(templateType) : [];
+            setFormData({
+              vehicleName: vehicle?.brand || '',
+              vehicleNumber: vehicle?.plateNumber || '',
+              items: defaultItems.map((item: any) => ({ ...item, actual: '' }))
+            });
+          } catch(e) {}
         }
       }
     } catch (err) {
@@ -291,9 +218,6 @@ export const EngineComponentDisassemblyForm: React.FC<Props> = ({ vehicle, exist
       let existingDoc = null;
       try {
         existingDoc = await DataService.get('repairForms', docId);
-        if (existingDoc && !existingDoc.isDeleted) {
-          docExists = true;
-        }
       } catch (err) {}
 
       if (existingDoc && currentUser && !canEditDocument(currentUser, existingDoc)) {
@@ -312,7 +236,7 @@ export const EngineComponentDisassemblyForm: React.FC<Props> = ({ vehicle, exist
           tongGioCong: (formData.items || []).reduce((sum: number, item: any) => sum + (parseFloat(item.gioCong) || 0), 0),
           updatedBy: currentUser?.fullName || currentUser?.username || 'unknown',
           updatedAt: new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
-          originalStatus: formData.status
+          originalStatus: formData.status || 'DRAFT'
         },
         isDeleted: false,
         createdBy: docExists && existingDoc?.createdBy ? existingDoc.createdBy : (currentUser?.uid || currentUser?.username || 'unknown'),
@@ -573,8 +497,8 @@ export const EngineComponentDisassemblyForm: React.FC<Props> = ({ vehicle, exist
             onChange={(e) => setFormData({ 
               ...formData, 
               status: e.target.value,
-              completedAt: e.target.value === 'COMPLETED' ? new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : formData.completedAt,
-              approvedAt: e.target.value === 'APPROVED' ? new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : formData.approvedAt,
+              completedAt: e.target.value === 'COMPLETED' ? new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : (formData.completedAt || null),
+              approvedAt: e.target.value === 'APPROVED' ? new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : (formData.approvedAt || null),
              })}
             disabled={isLocked && !isAdmin}
             className={`px-3 py-2 text-sm font-medium rounded-lg border outline-none ${
@@ -611,7 +535,7 @@ export const EngineComponentDisassemblyForm: React.FC<Props> = ({ vehicle, exist
             zoom: `${zoom}%`,
             fontFamily: '"Times New Roman", Times, serif'
           }}
-          className="bg-white shadow-xl w-[210mm] min-w-[210mm] min-h-[297mm] p-[10mm] sm:p-[20mm] mx-auto text-black print:shadow-none print:m-0 print:p-0 print:max-w-none origin-top-left sm:origin-top print:!zoom-100"
+          className="bg-white text-stone-900 sm:shadow-2xl origin-top-left sm:origin-top w-full sm:w-[210mm] border-none sm:border-2 border-transparent sm:border-stone-200 print:border-none print:w-full print:p-0 print:shadow-none print:!zoom-100 min-h-[max-content] mx-auto p-4 sm:p-[20mm] font-serif"
         >
           {/* Header */}
           <div className="flex justify-between items-start mb-8">
@@ -751,8 +675,8 @@ export const EngineComponentDisassemblyForm: React.FC<Props> = ({ vehicle, exist
           </div>
 
           <div className="mb-6">
-            <table className="w-full border-collapse border border-black text-[15px]">
-              <thead>
+            <table className="w-full border-collapse border-y border-x sm:border border-stone-300 sm:border-black text-[15px]">
+              <thead className="hidden sm:table-header-group">
                 <tr>
                   <th className="border border-black px-2 py-2 text-center w-12 font-bold">TT</th>
                   <th className="border border-black px-2 py-2 text-center font-bold">Nội dung</th>
@@ -781,7 +705,7 @@ export const EngineComponentDisassemblyForm: React.FC<Props> = ({ vehicle, exist
                     return (
                       <React.Fragment key={index}>
                         {showCategoryHeader && (
-                          <tr className="bg-stone-50 print:bg-stone-100 font-bold">
+                          <tr className="bg-stone-50 print:bg-stone-100 font-bold block sm:table-row">
                             <td colSpan={7} className="border border-black px-4 py-2 text-left text-[14px]">
                               {item.category}
                             </td>

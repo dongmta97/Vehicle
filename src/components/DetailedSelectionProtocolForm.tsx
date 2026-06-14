@@ -96,6 +96,13 @@ export function DetailedSelectionProtocolForm({ vehicle, savedVehicles = [], ini
           const isInitialVehicle = vId === (vehicle?.vehicleId || (vehicle as any)?.id);
           const formIdToMatch = isInitialVehicle ? initialFormId : null;
 
+          if (!formIdToMatch) {
+            setDocId(null);
+            setExistingDoc(null);
+            setFormData({});
+            return;
+          }
+
           let firestoreDocFound = false;
 
           // 1. Ưu tiên đọc từ Firestore trước
@@ -107,10 +114,7 @@ export function DetailedSelectionProtocolForm({ vehicle, savedVehicles = [], ini
             const snapshot = await getDocs(q);
             const correctDoc = snapshot.docs.find(docSnap => {
               const d = docSnap.data();
-              if (formIdToMatch) {
-                  return (docSnap.id === formIdToMatch || d.protocolId === formIdToMatch) && d.isDeleted === false;
-              }
-              return d.templateName === 'Hyundai County Inspection' && d.isDeleted === false;
+              return (docSnap.id === formIdToMatch || d.protocolId === formIdToMatch) && d.isDeleted === false;
             });
 
             if (correctDoc) {
@@ -141,10 +145,7 @@ export function DetailedSelectionProtocolForm({ vehicle, savedVehicles = [], ini
               try {
                 const forms = JSON.parse(localCache);
                 const cachedForm = forms.find((f: any) => {
-                  if (formIdToMatch) {
-                    return (f.docId === formIdToMatch || f.protocolId === formIdToMatch || f.id === formIdToMatch || f.vehicleId === formIdToMatch) && !f.isDeleted;
-                  }
-                  return f.vehicleId === vId && f.templateName === 'Hyundai County Inspection' && !f.isDeleted;
+                  return (f.docId === formIdToMatch || f.protocolId === formIdToMatch || f.id === formIdToMatch || f.vehicleId === formIdToMatch) && !f.isDeleted;
                 });
                 
                 if (cachedForm) {
@@ -186,7 +187,7 @@ export function DetailedSelectionProtocolForm({ vehicle, savedVehicles = [], ini
       if (dpStored) {
         dpList = JSON.parse(dpStored);
       }
-      dpList = dpList.filter((p: any) => !(p.vehicleId === formDoc.vehicleId && p.templateName === formDoc.templateName));
+      dpList = dpList.filter((p: any) => p.docId !== formDoc.docId && p.id !== formDoc.docId);
       dpList.push(formDoc);
       localStorage.setItem(dpKey, JSON.stringify(dpList));
     } catch (e) {
@@ -272,7 +273,7 @@ export function DetailedSelectionProtocolForm({ vehicle, savedVehicles = [], ini
 
   if (!activeVehicle?.vehicleId) {
     return (
-      <div className="flex-1 bg-stone-100 flex flex-col items-center justify-center p-8">
+      <div className="flex-1 w-full bg-stone-100 flex flex-col items-center justify-center p-8">
         <div className="bg-white p-8 rounded-xl shadow-md text-center max-w-md w-full">
           <div className="w-16 h-16 bg-amber-100 text-amber-600 flex items-center justify-center rounded-full mx-auto mb-4">
             <FileText className="h-8 w-8" />
@@ -309,10 +310,10 @@ export function DetailedSelectionProtocolForm({ vehicle, savedVehicles = [], ini
 
   // A4 dimensions approx: max-width: 210mm x 297mm (min-height)
   return (
-    <div className={`flex flex-col h-full bg-stone-900 border border-stone-800 shadow-xl overflow-hidden ${isFullscreen ? 'fixed inset-0 z-50' : 'relative rounded-2xl'}`} style={{ maxHeight: isFullscreen ? '100vh' : '820px' }}>
+    <div className={`flex flex-col h-full bg-stone-100 border border-stone-200 shadow-xl overflow-hidden ${isFullscreen ? 'fixed inset-0 z-50' : 'relative rounded-2xl'}`} style={{ maxHeight: isFullscreen ? '100vh' : '820px' }}>
       
       {/* Upper Control Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 bg-stone-950 border-b border-stone-800">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 bg-white border-b border-stone-200">
         <div className="flex items-center gap-2">
           <FileText className="h-5 w-5 text-amber-500" />
           <span className="text-xs font-bold uppercase tracking-wider text-stone-300">Biên bản kiểm chọn (A4)</span>
@@ -324,13 +325,13 @@ export function DetailedSelectionProtocolForm({ vehicle, savedVehicles = [], ini
 
         {/* Dynamic Zoom levels based on user request */}
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex items-center gap-1 bg-stone-900 border border-stone-800 px-1.5 py-0.5 rounded-lg text-xs font-mono">
+          <div className="flex items-center gap-1 hidden sm:flex bg-stone-50 border border-stone-200 px-1.5 py-0.5 rounded-lg text-xs font-mono">
             <span className="mr-1.5 text-stone-400 font-sans text-3xs uppercase tracking-wider">Tỷ lệ:</span>
             {[50, 75, 100, 125, 150, 200].map((z) => (
               <button
                 key={z}
                 onClick={() => setZoom(z)}
-                className={`px-1.5 py-0.5 rounded transition-all text-3xs font-bold cursor-pointer ${zoom === z ? 'bg-amber-600 text-white shadow-sm' : 'hover:bg-stone-800 text-stone-400 hover:text-stone-200'}`}
+                className={`px-1.5 py-0.5 rounded transition-all text-3xs font-bold cursor-pointer ${zoom === z ? 'bg-amber-600 text-white shadow-sm' : 'hover:bg-white text-stone-600 hover:text-stone-800'}`}
               >
                 {z}%
               </button>
@@ -340,7 +341,7 @@ export function DetailedSelectionProtocolForm({ vehicle, savedVehicles = [], ini
           {/* Fullscreen Button */}
           <button 
             onClick={() => setIsFullscreen(!isFullscreen)} 
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-900 hover:bg-stone-800 border border-stone-700 hover:border-stone-600 text-stone-300 transition-colors rounded-lg text-xs font-medium"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-stone-50 hover:bg-stone-100 border border-stone-200 text-stone-600 transition-colors rounded-lg text-xs font-medium"
           >
             {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
             <span className="hidden sm:inline">{isFullscreen ? 'Thu nhỏ' : 'Mở rộng'}</span>
@@ -350,14 +351,14 @@ export function DetailedSelectionProtocolForm({ vehicle, savedVehicles = [], ini
 
           <button
             onClick={() => logger.info("Chức năng đang được cập nhật.")}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-stone-300 bg-stone-900 border border-stone-700 hover:bg-stone-800 rounded-lg text-xs font-medium transition-all"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-stone-50 hover:bg-stone-100 text-stone-600 hover:text-stone-800 border border-stone-200 rounded-lg text-xs font-medium transition-all"
           >
             <Download className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Xuất PDF</span>
           </button>
           <button
             onClick={() => window.print()}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-stone-300 bg-stone-900 border border-stone-700 hover:bg-stone-800 rounded-lg text-xs font-medium transition-all"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-stone-50 hover:bg-stone-100 text-stone-600 hover:text-stone-800 border border-stone-200 rounded-lg text-xs font-medium transition-all"
           >
             <Printer className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">In</span>
@@ -376,7 +377,7 @@ export function DetailedSelectionProtocolForm({ vehicle, savedVehicles = [], ini
 
           <button
             onClick={onClose}
-            className="inline-flex items-center justify-center w-8 h-8 text-stone-400 hover:text-white bg-stone-900 hover:bg-red-500/80 border border-stone-700 hover:border-red-500 rounded-lg transition-all ml-1"
+            className="inline-flex items-center justify-center w-8 h-8 text-stone-400 hover:text-white bg-stone-50 hover:bg-red-500/80 border border-stone-200 hover:border-red-500 rounded-lg transition-all ml-1"
             title="Đóng"
           >
             <X className="h-4 w-4" />
@@ -384,18 +385,18 @@ export function DetailedSelectionProtocolForm({ vehicle, savedVehicles = [], ini
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-4 md:p-8 flex justify-center bg-stone-900/50 print:p-0 print:bg-white custom-scrollbar">
+      <div className="flex-1 w-full overflow-auto p-4 md:p-8 flex justify-center bg-white sm:bg-stone-50/80 print:p-0 print:bg-white custom-scrollbar">
         <div style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center', transition: 'transform 0.15s ease-out', marginBottom: `${Math.max(0, (zoom - 100) * 10)}px` }} className="print:transform-none">
           <div 
-            className="bg-white shadow-xl w-[800px] flex flex-col mx-auto font-serif"
-            style={{ fontFamily: '"Times New Roman", Times, serif', minHeight: '1122.5px' }} // Approximate A4 aspect ratio
+            className="bg-white text-stone-900 sm:shadow-2xl origin-top-left sm:origin-top w-full sm:w-auto border-none sm:border-2 border-transparent sm:border-stone-200 print:border-none print:w-full print:p-0 print:shadow-none print:!zoom-100 min-h-[max-content] flex flex-col mx-auto font-serif"
+            style={{ fontFamily: '"Times New Roman", Times, serif', width: typeof window !== 'undefined' && window.innerWidth < 800 ? '100%' : '260mm', minHeight: typeof window !== 'undefined' && window.innerWidth < 800 ? '100%' : '350mm', padding: typeof window !== 'undefined' && window.innerWidth < 800 ? '10mm 4mm' : '20mm', marginRight: 'auto', marginLeft: 'auto' }} // Approximate A4 aspect ratio
           >
             {/* A4 Content Area */}
-            <div className="p-8 md:p-12 flex flex-col gap-6 text-black print:p-0">
+            <div className="flex flex-col gap-6 text-black print:p-0">
               <fieldset disabled={!canEdit} className="border-0 p-0 m-0 min-w-0">
               
               {/* Administrative Header block */}
-          <div className="grid grid-cols-2 gap-4 items-start text-center mb-6 pb-4 border-b border-stone-200">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start text-center mb-6 pb-4 border-b border-stone-200">
             <div className="space-y-1">
               <div className="font-bold text-stone-900 uppercase whitespace-nowrap" style={{ fontSize: '13pt' }}>CỤC HẬU CẦN - KỸ THUẬT QUÂN ĐOÀN 34</div>
               <div className="font-bold text-stone-900 uppercase underline decoration-1 underline-offset-4 whitespace-nowrap" style={{ fontSize: '13pt' }}>TIỂU ĐOÀN SCTH30</div>
@@ -436,27 +437,27 @@ export function DetailedSelectionProtocolForm({ vehicle, savedVehicles = [], ini
 
           {/* Top Form Fields */}
           <div className="mt-8 space-y-4 text-[15px]">
-            <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
               {/* Row 1 */}
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-0.5 sm:gap-2 sm:items-center">
                 <span className="font-bold min-w-[100px]">Đơn vị giao:</span>
                 <input 
                   type="text" 
-                  className="flex-1 border-b border-dashed border-stone-400 focus:outline-none focus:border-stone-800 bg-transparent"
+                  className="flex-1 w-full border-b border-dashed border-stone-400 focus:outline-none focus:border-stone-800 bg-transparent"
                   value={metadata.unitTransfer}
                   onChange={(e) => setMetadata({ ...metadata, unitTransfer: e.target.value })}
                 />
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-0.5 sm:gap-2 sm:items-center">
                 <span className="font-bold min-w-[90px]">Loại xe máy:</span>
-                <span className="flex-1 font-bold">Hyundai County</span>
+                <span className="flex-1 w-full font-bold">Hyundai County</span>
               </div>
 
               {/* Row 2 */}
-              <div className="flex gap-2 items-center relative group">
+              <div className="flex flex-col sm:flex-row gap-0.5 sm:gap-2 sm:items-center relative group">
                 <span className="font-bold min-w-[100px]">Số ĐK:</span>
                 <select 
-                  className="flex-1 pb-0.5 border-b border-dashed border-stone-400 focus:outline-none focus:border-stone-800 bg-transparent font-bold appearance-none cursor-pointer pr-6 relative z-10"
+                  className="flex-1 w-full pb-0.5 border-b border-dashed border-stone-400 focus:outline-none focus:border-stone-800 bg-transparent font-bold appearance-none cursor-pointer pr-6 relative z-10"
                   value={activeVehicle?.vehicleId || ''}
                   onChange={(e) => setSelectedVehicleId(e.target.value)}
                 >
@@ -471,27 +472,27 @@ export function DetailedSelectionProtocolForm({ vehicle, savedVehicles = [], ini
                   <ChevronDown className="h-4 w-4" />
                 </div>
               </div>
-              <div className="flex gap-2 items-center">
+              <div className="flex flex-col sm:flex-row gap-0.5 sm:gap-2 sm:items-center">
                 <span className="font-bold min-w-[90px]">Nhóm xe:</span>
                 <input 
                   type="text" 
-                  className="flex-1 border-b border-dashed border-stone-400 focus:outline-none focus:border-stone-800 bg-transparent"
+                  className="flex-1 w-full border-b border-dashed border-stone-400 focus:outline-none focus:border-stone-800 bg-transparent"
                   value={metadata.vehicleGroup}
                   onChange={(e) => setMetadata({ ...metadata, vehicleGroup: e.target.value })}
                 />
               </div>
 
               {/* Row 3 */}
-              <div className="flex gap-2 items-center">
+              <div className="flex flex-col sm:flex-row gap-0.5 sm:gap-2 sm:items-center">
                 <span className="font-bold min-w-[100px]">Đơn vị nhận:</span>
                 <input 
                   type="text" 
-                  className="flex-1 border-b border-dashed border-stone-400 focus:outline-none focus:border-stone-800 bg-transparent"
+                  className="flex-1 w-full border-b border-dashed border-stone-400 focus:outline-none focus:border-stone-800 bg-transparent"
                   value={metadata.unitReceive}
                   onChange={(e) => setMetadata({ ...metadata, unitReceive: e.target.value })}
                 />
               </div>
-              <div className="flex gap-2 items-center">
+              <div className="flex flex-col sm:flex-row gap-0.5 sm:gap-2 sm:items-center">
                 <span className="font-bold min-w-[90px]">SK:</span>
                 <input 
                   type="text" 
@@ -502,14 +503,14 @@ export function DetailedSelectionProtocolForm({ vehicle, savedVehicles = [], ini
                 <span className="font-bold ml-4 mr-2">Thực tế:</span>
                 <input 
                   type="text" 
-                  className="flex-1 border-b border-dashed border-stone-400 focus:outline-none focus:border-stone-800 bg-transparent"
+                  className="flex-1 w-full border-b border-dashed border-stone-400 focus:outline-none focus:border-stone-800 bg-transparent"
                   value={metadata.actualChassisNumber}
                   onChange={(e) => setMetadata({ ...metadata, actualChassisNumber: e.target.value })}
                 />
               </div>
 
               {/* Row 4 */}
-              <div className="flex gap-4 items-center">
+              <div className="flex flex-col sm:flex-row gap-0.5 sm:gap-4 sm:items-center">
                 <span className="font-bold min-w-[100px]">TTT xe vào:</span>
                 <label className="flex items-center gap-1.5 cursor-pointer">
                   <input 
@@ -532,7 +533,7 @@ export function DetailedSelectionProtocolForm({ vehicle, savedVehicles = [], ini
                   <span>Kéo</span>
                 </label>
               </div>
-              <div className="flex gap-2 items-center">
+              <div className="flex flex-col sm:flex-row gap-0.5 sm:gap-2 sm:items-center">
                 <span className="font-bold min-w-[90px]">SM:</span>
                 <input 
                   type="text" 
@@ -543,7 +544,7 @@ export function DetailedSelectionProtocolForm({ vehicle, savedVehicles = [], ini
                 <span className="font-bold ml-4 mr-2">Thực tế:</span>
                 <input 
                   type="text" 
-                  className="flex-1 border-b border-dashed border-stone-400 focus:outline-none focus:border-stone-800 bg-transparent"
+                  className="flex-1 w-full border-b border-dashed border-stone-400 focus:outline-none focus:border-stone-800 bg-transparent"
                   value={metadata.actualEngineNumber}
                   onChange={(e) => setMetadata({ ...metadata, actualEngineNumber: e.target.value })}
                 />
@@ -556,7 +557,7 @@ export function DetailedSelectionProtocolForm({ vehicle, savedVehicles = [], ini
             <h3 className="text-center font-bold uppercase mb-4 text-[16px]">KẾT QUẢ KIỂM CHỌN</h3>
             
             <table className="w-full border-collapse border border-black text-[14px]">
-              <thead>
+              <thead className="hidden sm:table-header-group">
                 <tr>
                   <th className="border border-black p-2 font-bold text-center w-12">TT</th>
                   <th className="border border-black p-2 font-bold text-center w-1/3">Tên cụm – chi tiết</th>
@@ -573,62 +574,67 @@ export function DetailedSelectionProtocolForm({ vehicle, savedVehicles = [], ini
                   let globalIndex = 0;
                   return InspectionTemplate.groups.map((group) => (
                   <React.Fragment key={group.name}>
-                     <tr className="bg-stone-50 font-bold">
-                        <td colSpan={8} className="border border-black p-2 text-left">{group.name}</td>
+                     <tr className="bg-stone-50 font-bold block sm:table-row">
+                        <td colSpan={8} className="border-y border-x sm:border border-stone-300 sm:border-black py-2.5 px-3 sm:p-2 text-left block sm:table-cell mt-4 sm:mt-0 text-[12pt] sm:text-[14px]">{group.name}</td>
                      </tr>
                      {group.subgroups.map((subgroup) => (
                        <React.Fragment key={subgroup.name}>
-                          <tr className="bg-stone-50 font-bold italic">
-                            <td colSpan={8} className="border border-black p-2 text-left pl-6">{subgroup.name}</td>
+                          <tr className="bg-stone-50 font-bold italic block sm:table-row">
+                            <td colSpan={8} className="border-y border-x sm:border border-stone-300 sm:border-black py-2 px-3 sm:p-2 text-left sm:pl-6 block sm:table-cell mt-2 sm:mt-0 bg-stone-100 sm:bg-transparent text-[11pt] sm:text-[14px]">{subgroup.name}</td>
                           </tr>
                           {subgroup.items.map((item) => {
                             globalIndex++;
                             const currentIndex = globalIndex;
                             return (
-                            <tr key={item.name} className="h-10 hover:bg-stone-50/50">
-                              <td className="border border-black p-1 text-center font-medium bg-stone-50/20">{currentIndex}</td>
-                              <td className="border border-black p-2 pl-4 cursor-default select-none bg-stone-50/20">{item.name}</td>
-                              <td className="border border-black p-1 text-center font-bold text-stone-600 bg-stone-50/20">{item.quantity}</td>
-                              <td className="border border-black p-1">
-                                <input 
-                                  type="number" min="0" placeholder="0"
-                                  className="w-full h-8 px-1 text-center bg-transparent border border-stone-300 hover:border-emerald-400 focus:border-emerald-500 focus:bg-emerald-50 focus:outline-none cursor-pointer rounded-sm" 
-                                  value={formData[currentIndex.toString()]?.missing || ''}
-                                  onChange={(e) => handleInputChange(currentIndex, 'missing', e.target.value)}
-                                />
-                              </td>
-                              <td className="border border-black p-1">
-                                <input 
-                                  type="number" min="0" placeholder="0"
-                                  className="w-full h-8 px-1 text-center bg-transparent border border-stone-300 hover:border-emerald-400 focus:border-emerald-500 focus:bg-emerald-50 focus:outline-none cursor-pointer rounded-sm" 
-                                  value={formData[currentIndex.toString()]?.replace || ''}
-                                  onChange={(e) => handleInputChange(currentIndex, 'replace', e.target.value)}
-                                />
-                              </td>
-                              <td className="border border-black p-1">
-                                <input 
-                                  type="number" min="0" placeholder="0"
-                                  className="w-full h-8 px-1 text-center bg-transparent border border-stone-300 hover:border-emerald-400 focus:border-emerald-500 focus:bg-emerald-50 focus:outline-none cursor-pointer rounded-sm" 
-                                  value={formData[currentIndex.toString()]?.restore || ''}
-                                  onChange={(e) => handleInputChange(currentIndex, 'restore', e.target.value)}
-                                />
-                              </td>
-                              <td className="border border-black p-1">
-                                <input 
-                                  type="number" min="0" placeholder="0"
-                                  className="w-full h-8 px-1 text-center bg-transparent border border-stone-300 hover:border-emerald-400 focus:border-emerald-500 focus:bg-emerald-50 focus:outline-none cursor-pointer rounded-sm" 
-                                  value={formData[currentIndex.toString()]?.repair || ''}
-                                  onChange={(e) => handleInputChange(currentIndex, 'repair', e.target.value)}
-                                />
-                              </td>
-                              <td className="border border-black p-1">
-                                <input 
-                                  type="number" min="0" placeholder="0"
-                                  className="w-full h-8 px-1 text-center bg-transparent border border-stone-300 hover:border-emerald-400 focus:border-emerald-500 focus:bg-emerald-50 focus:outline-none cursor-pointer rounded-sm" 
-                                  value={formData[currentIndex.toString()]?.reuse || ''}
-                                  onChange={(e) => handleInputChange(currentIndex, 'reuse', e.target.value)}
-                                />
-                              </td>
+                            <tr key={item.name} className="flex flex-col sm:table-row hover:bg-stone-50/50 transition-colors border-b-2 sm:border-b border-stone-300 sm:border-black mb-2 sm:mb-0 h-auto sm:h-10">
+                              <td className="hidden sm:table-cell border border-black p-1 text-center font-medium bg-stone-50/20">{currentIndex}</td>
+                              <td className="py-2.5 px-2 sm:px-3 sm:border-r sm:border-black font-medium text-stone-800 text-[11pt] sm:text-[14px] leading-tight sm:leading-normal bg-stone-100 sm:bg-stone-50/20 border-t border-x border-stone-300 sm:border-y-0 sm:border-l-0"><span className="sm:hidden font-bold mr-1">{currentIndex}.</span>{item.name}<span className="sm:hidden text-stone-500 font-normal text-[9pt] ml-1">(Biên chế: {item.quantity})</span></td>
+                              <td className="hidden sm:table-cell border border-black p-1 text-center font-bold text-stone-600 bg-stone-50/20">{item.quantity}</td>
+                              <td className="py-1.5 px-2 sm:p-1 text-center bg-white sm:bg-transparent border-x border-b sm:border border-stone-300 sm:border-black flex sm:table-cell items-center justify-between">
+    <span className="sm:hidden text-xs text-stone-500 font-medium ml-1">Thiếu</span>
+    <input 
+      type="number" min="0" placeholder="0"
+      className="w-20 sm:w-full h-8 px-1 text-center bg-white sm:bg-transparent border border-stone-300 sm:border-transparent hover:border-stone-800 focus:border-stone-800 focus:bg-white sm:focus:bg-emerald-50 focus:outline-none cursor-pointer rounded px-2 sm:px-1 py-1.5 sm:py-0" 
+      value={formData[currentIndex.toString()]?.missing || ''}
+      onChange={(e) => handleInputChange(currentIndex, 'missing', e.target.value)}
+    />
+  </td>
+                              <td className="py-1.5 px-2 sm:p-1 text-center bg-white sm:bg-transparent border-x border-b sm:border border-stone-300 sm:border-black flex sm:table-cell items-center justify-between">
+    <span className="sm:hidden text-xs text-stone-500 font-medium ml-1">Hỏng thay</span>
+    <input 
+      type="number" min="0" placeholder="0"
+      className="w-20 sm:w-full h-8 px-1 text-center bg-white sm:bg-transparent border border-stone-300 sm:border-transparent hover:border-stone-800 focus:border-stone-800 focus:bg-white sm:focus:bg-emerald-50 focus:outline-none cursor-pointer rounded px-2 sm:px-1 py-1.5 sm:py-0" 
+      value={formData[currentIndex.toString()]?.replace || ''}
+      onChange={(e) => handleInputChange(currentIndex, 'replace', e.target.value)}
+    />
+  </td>
+                              <td className="py-1.5 px-2 sm:p-1 text-center bg-white sm:bg-transparent border-x border-b sm:border border-stone-300 sm:border-black flex sm:table-cell items-center justify-between">
+    <span className="sm:hidden text-xs text-stone-500 font-medium ml-1">Phục hồi</span>
+    <input 
+      type="number" min="0" placeholder="0"
+      className="w-20 sm:w-full h-8 px-1 text-center bg-white sm:bg-transparent border border-stone-300 sm:border-transparent hover:border-stone-800 focus:border-stone-800 focus:bg-white sm:focus:bg-emerald-50 focus:outline-none cursor-pointer rounded px-2 sm:px-1 py-1.5 sm:py-0" 
+      value={formData[currentIndex.toString()]?.restore || ''}
+      onChange={(e) => handleInputChange(currentIndex, 'restore', e.target.value)}
+    />
+  </td>
+                              <td className="py-1.5 px-2 sm:p-1 text-center bg-white sm:bg-transparent border-x border-b sm:border border-stone-300 sm:border-black flex sm:table-cell items-center justify-between">
+    <span className="sm:hidden text-xs text-stone-500 font-medium ml-1">Sửa chữa</span>
+    <input 
+      type="number" min="0" placeholder="0"
+      className="w-20 sm:w-full h-8 px-1 text-center bg-white sm:bg-transparent border border-stone-300 sm:border-transparent hover:border-stone-800 focus:border-stone-800 focus:bg-white sm:focus:bg-emerald-50 focus:outline-none cursor-pointer rounded px-2 sm:px-1 py-1.5 sm:py-0" 
+      value={formData[currentIndex.toString()]?.repair || ''}
+      onChange={(e) => handleInputChange(currentIndex, 'repair', e.target.value)}
+    />
+  </td>
+                              <td className="py-1.5 px-2 sm:p-1 text-center bg-white sm:bg-transparent border-x border-b sm:border border-stone-300 sm:border-black flex sm:table-cell items-center justify-between">
+    <span className="sm:hidden text-xs text-stone-500 font-medium ml-1">Dùng lại</span>
+    <input 
+      type="number" min="0" placeholder="0"
+      className="w-20 sm:w-full h-8 px-1 text-center bg-white sm:bg-transparent border border-stone-300 sm:border-transparent hover:border-stone-800 focus:border-stone-800 focus:bg-white sm:focus:bg-emerald-50 focus:outline-none cursor-pointer rounded px-2 sm:px-1 py-1.5 sm:py-0" 
+      value={formData[currentIndex.toString()]?.reuse || ''}
+      onChange={(e) => handleInputChange(currentIndex, 'reuse', e.target.value)}
+    />
+  </td>
                             </tr>
                             );
                           })}

@@ -256,8 +256,8 @@ export function OperationsTab() {
       }
       return true;
     }).sort((a: any, b: any) => {
-      const dateA = parseDate(a.createdAt);
-      const dateB = parseDate(b.createdAt);
+      const dateA = parseDate(a.updatedAt || a.createdAt);
+      const dateB = parseDate(b.updatedAt || b.createdAt);
       const timeA = dateA ? dateA.getTime() : 0;
       const timeB = dateB ? dateB.getTime() : 0;
       return timeB - timeA;

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Vehicle, DamageProtocol, DamageItem } from '../types';
 import { logger } from '../utils/logger';
+import { AutoResizeTextarea } from './AutoResizeTextarea';
 
 interface DamageProtocolFormProps {
   vehicle: Vehicle | null;
@@ -74,6 +75,13 @@ export const DamageProtocolForm: React.FC<DamageProtocolFormProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isPreviewMode, setIsPreviewMode] = useState(!!initialProtocol);
+
+  const [zoom, setZoom] = useState(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 800) {
+      return Math.max(30, Math.floor((window.innerWidth) / 7.94));
+    }
+    return 100;
+  });
 
   // Dynamic Row Operations
   const handleAddItem = () => {
@@ -150,67 +158,78 @@ export const DamageProtocolForm: React.FC<DamageProtocolFormProps> = ({
       };
 
       await onSave(payload);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setSaveError("Gặp lối trong lúc lưu hồ sơ chi tiết. Hãy thử lại!");
+      setSaveError(err.message || "Gặp lỗi trong lúc lưu hồ sơ chi tiết. Hãy thử lại!");
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
-      
+    <div className="flex flex-col h-full bg-stone-900 border border-stone-800 rounded-lg overflow-hidden">
       {/* Header Accent Bar */}
-      <div className="h-2 bg-yellow-500 w-full" />
+      <div className="h-1 bg-emerald-500 w-full" />
       
       {/* Inner Controls Toolbar */}
-      <div className="px-5 py-4 border-b border-stone-200 bg-stone-50 flex items-center justify-between flex-wrap gap-3">
+      <div className="px-5 py-3 border-b border-stone-800 bg-stone-900 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <FileText className="h-5 w-5 text-emerald-850" />
-          <h3 className="font-bold text-stone-850 text-base md:text-lg font-sans">
-            {isPreviewMode ? "XEM TRƯỚC BẢN IN QUÂN QUY" : "LẬP BIÊN BẢN CHI TIẾT HƯ HỎNG"}
-          </h3>
+           <FileText className="h-5 w-5 text-emerald-500" />
+           <h3 className="font-bold text-stone-100 text-sm md:text-base font-sans uppercase">
+             BIÊN BẢN CHI TIẾT HƯ HỎNG {isSaving ? "(Đang lưu...)" : ""}
+           </h3>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center bg-stone-900 border border-stone-800 rounded-lg overflow-hidden md:mt-0 shadow-inner mr-2">
+            <button type="button" onClick={() => setZoom(Math.max(30, zoom - 10))} className="px-3 py-1.5 hover:bg-stone-800 text-stone-300 transition-colors font-bold text-sm">-</button>
+            <div className="px-3 py-1.5 text-stone-300 font-mono text-sm border-x border-stone-800 min-w-[3rem] text-center">{zoom}%</div>
+            <button type="button" onClick={() => setZoom(Math.min(200, zoom + 10))} className="px-3 py-1.5 hover:bg-stone-800 text-stone-300 transition-colors font-bold text-sm">+</button>
+          </div>
+
           <button
             type="button"
-            onClick={() => setIsPreviewMode(!isPreviewMode)}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
-              isPreviewMode
-                ? 'bg-stone-200 text-stone-800 border-stone-300'
-                : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-            }`}
+            onClick={handlePrint}
+            className="px-3 py-1.5 bg-sky-700 hover:bg-sky-800 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
           >
-            {isPreviewMode ? "Quay lại soạn thảo" : "Xem trước trang in"}
+            <Printer className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">In Biên Bản</span>
           </button>
-          
-          {isPreviewMode && (
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="px-3 py-1.5 bg-sky-700 hover:bg-sky-800 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
-            >
-              <Printer className="h-3.5 w-3.5" />
-              <span>In Biên Bản</span>
-            </button>
-          )}
 
           <button
             onClick={onCancel}
-            className="p-1 px-1.5 bg-stone-150 hover:bg-stone-200 text-stone-600 rounded-lg cursor-pointer text-xs"
-            title="Hủy lập biên bản"
+            className="p-1.5 hover:bg-stone-800 text-stone-300 hover:text-white rounded-lg cursor-pointer transition-colors"
+            title="Đóng biên bản"
           >
-            <X className="h-4 w-4" />
+            <X className="h-4.5 w-4.5" />
+          </button>
+          
+          <button
+            onClick={handleFormSubmit}
+            disabled={isSaving}
+            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 ml-1"
+          >
+            <Save className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Lưu</span>
           </button>
         </div>
       </div>
 
-      {isPreviewMode ? (
-        /* ==================== PRINT PREVIEW TEMPLATE ==================== */
-        <div className="p-8 md:p-12 overflow-hidden select-text font-serif bg-white" id="print-area">
-          <div className="w-full max-w-4xl mx-auto text-black leading-normal text-sm space-y-8 print:p-0">
+      <div className="flex-1 overflow-auto bg-stone-950/80 p-2 sm:p-6 flex justify-center items-start">
+        <div 
+          className="bg-white text-stone-900 shadow-2xl origin-top-left sm:origin-top border-2 border-stone-950 print:border-none print:w-full print:p-0 print:shadow-none print:!zoom-100"
+          style={{
+            fontFamily: "'Times New Roman', Times, serif",
+            zoom: `${zoom}%`,
+            width: '210mm',
+            minHeight: '297mm',
+            padding: '20mm',
+            marginRight: 'auto',
+            marginLeft: 'auto'
+          }}
+          id="damage-a4-document"
+        >
+          <div className="w-full text-black leading-normal text-sm space-y-8 print:p-0">
             
             {/* National Header & Unit */}
             <div className="grid grid-cols-2 gap-4 items-start text-center">
@@ -326,309 +345,7 @@ export const DamageProtocolForm: React.FC<DamageProtocolFormProps> = ({
 
           </div>
         </div>
-      ) : (
-        /* ==================== SOẠN THẢO/EDIT FORM ==================== */
-        <form onSubmit={handleFormSubmit} className="p-5 md:p-6 space-y-6">
-          
-          {saveError && (
-            <div className="p-4 bg-red-50 border border-red-200 text-red-800 rounded-xl text-xs md:text-sm font-semibold flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-600 shrink-0" />
-              <span>{saveError}</span>
-            </div>
-          )}
-
-          {/* Section 1: Official Header Meta */}
-          <div className="bg-stone-50 p-4 rounded-xl border border-stone-150 space-y-4">
-            <h4 className="text-xs font-bold text-stone-600 uppercase tracking-widest border-b border-stone-200 pb-1.5 font-sans">
-              Thông tin hành chính quân sự
-            </h4>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-stone-600 mb-1">Mã/Số hiệu biên bản</label>
-                <input
-                  type="text"
-                  value={reportNumber}
-                  onChange={(e) => setReportNumber(e.target.value)}
-                  className="w-full bg-white border border-stone-300 p-2.5 rounded-lg text-sm text-stone-850 font-mono"
-                  placeholder="ví dụ: 03/BB-SCTH30"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-stone-600 mb-1">Ngày lập văn bản</label>
-                <input
-                  type="date"
-                  value={createdDate}
-                  onChange={(e) => setCreatedDate(e.target.value)}
-                  className="w-full bg-white border border-stone-300 p-2.5 rounded-lg text-sm text-stone-850 font-sans"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-stone-600 mb-1">Địa điểm thiết lập</label>
-                <input
-                  type="text"
-                  value={place}
-                  onChange={(e) => setPlace(e.target.value)}
-                  className="w-full bg-white border border-stone-300 p-2.5 rounded-lg text-sm text-stone-850 font-sans"
-                  placeholder="ví dụ: Tiểu đoàn SCTH30"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Section 2: Council Members */}
-          <div className="bg-white p-4 rounded-xl border border-stone-200 space-y-4">
-            <h4 className="text-xs font-bold text-stone-600 uppercase tracking-widest border-b border-stone-150 pb-1.5 font-sans">
-              Thành viên hội đồng giám định kỹ thuật
-            </h4>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-stone-600 mb-1">Đại diện Ban Chỉ huy / Trạm trưởng</label>
-                <input
-                  type="text"
-                  value={representativeGeneral}
-                  onChange={(e) => setRepresentativeGeneral(e.target.value)}
-                  className="w-full bg-stone-50 focus:bg-white border border-stone-300 p-2.5 rounded-lg text-sm text-stone-850 transition-colors"
-                  placeholder="ví dụ: Trung tá Lê Hồng Nam - Tiểu đoàn trưởng"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-stone-600 mb-1">Đại diện Ban Hậu cần-Kỹ thuật</label>
-                <input
-                  type="text"
-                  value={representativeTechnical}
-                  onChange={(e) => setRepresentativeTechnical(e.target.value)}
-                  className="w-full bg-stone-50 focus:bg-white border border-stone-300 p-2.5 rounded-lg text-sm text-stone-850 transition-colors"
-                  placeholder="ví dụ: Đại úy Đỗ Văn Minh - Trưởng ban"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-stone-600 mb-1">Thợ kỹ thuật sửa chính phụ trách</label>
-                <input
-                  type="text"
-                  value={technician}
-                  onChange={(e) => setTechnician(e.target.value)}
-                  className="w-full bg-stone-50 focus:bg-white border border-stone-300 p-2.5 rounded-lg text-sm text-stone-850 transition-colors"
-                  placeholder="ví dụ: Thượng úy Trần Quốc Tuấn - Trưởng tổ kỹ thuật"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-stone-600 mb-1">Lái xe / Trưởng xe phụ trách thiết bị</label>
-                <input
-                  type="text"
-                  value={driver}
-                  onChange={(e) => setDriver(e.target.value)}
-                  className="w-full bg-stone-50 focus:bg-white border border-stone-300 p-2.5 rounded-lg text-sm text-stone-850 transition-colors"
-                  placeholder="ví dụ: Thiếu úy Nguyễn Văn Hùng - Lái xe"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Section 3: Vehicle Information Overlay */}
-          <div className="bg-stone-50 p-4 rounded-xl border border-stone-150 space-y-4">
-            <h4 className="text-xs font-bold text-stone-600 uppercase tracking-widest border-b border-stone-200 pb-1.5 font-sans">
-              Thông số kỹ thuật định dạng phương tiện
-            </h4>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-stone-600 mb-1">Số đăng ký xe (Biển số)</label>
-                <input
-                  type="text"
-                  value={plateNumber}
-                  onChange={(e) => setPlateNumber(e.target.value)}
-                  className="w-full bg-white border border-stone-300 p-2.5 rounded-lg text-sm text-stone-800 font-mono uppercase"
-                  placeholder="Biển số quân sự"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-stone-600 mb-1">Nhãn hiệu (Hãng xe)</label>
-                <input
-                  type="text"
-                  value={brand}
-                  onChange={(e) => setBrand(e.target.value)}
-                  className="w-full bg-white border border-stone-300 p-2.5 rounded-lg text-sm text-stone-800 font-sans"
-                  placeholder="ví dụ: Ural-4320"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-stone-600 mb-1">Dòng/Loại xe quân sự</label>
-                <input
-                  type="text"
-                  value={vehicleType}
-                  onChange={(e) => setVehicleType(e.target.value)}
-                  className="w-full bg-white border border-stone-300 p-2.5 rounded-lg text-sm text-stone-800 font-sans"
-                  placeholder="ví dụ: Xe tải chở quân"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-stone-600 mb-1">Số khung xe</label>
-                <input
-                  type="text"
-                  value={chassisNumber}
-                  onChange={(e) => setChassisNumber(e.target.value)}
-                  className="w-full bg-white border border-stone-300 p-2.5 rounded-lg text-sm text-stone-805 font-mono"
-                  placeholder="Chassis number"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-stone-600 mb-1">Số máy động cơ</label>
-                <input
-                  type="text"
-                  value={engineNumber}
-                  onChange={(e) => setEngineNumber(e.target.value)}
-                  className="w-full bg-white border border-stone-300 p-2.5 rounded-lg text-sm text-stone-805 font-mono"
-                  placeholder="Engine number"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-stone-600 mb-1">Số Km đã chạy (Odometer)</label>
-                <input
-                  type="text"
-                  value={odometer}
-                  onChange={(e) => setOdometer(e.target.value)}
-                  className="w-full bg-white border border-stone-300 p-2.5 rounded-lg text-sm text-stone-805 font-sans"
-                  placeholder="ví dụ: 15,200 km"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Section 4: DAMAGE ITEMS (DYNAMIC TABLE INPUTS) */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-stone-200 pb-2 flex-wrap gap-2">
-              <h4 className="text-xs font-bold text-stone-700 uppercase tracking-widest font-sans flex items-center gap-1.5">
-                Danh mục chi tiết hư hỏng hiện hữu
-              </h4>
-              <button
-                type="button"
-                onClick={handleAddItem}
-                className="px-3 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>Thêm dòng hư hỏng</span>
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {items.map((item, index) => (
-                <div 
-                  key={item.id} 
-                  className="p-4 bg-stone-50 border border-stone-200 rounded-xl relative group space-y-3"
-                >
-                  {/* Delete button top-right */}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveItem(item.id)}
-                    className="absolute top-3 right-3 p-1.5 bg-white hover:bg-red-50 text-stone-400 hover:text-red-650 border border-stone-250 rounded-lg transition-colors cursor-pointer"
-                    title="Xóa hạng mục này"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="h-5 w-5 rounded-full bg-stone-300 text-stone-800 text-[11px] font-bold flex items-center justify-center font-mono">
-                      {index + 1}
-                    </span>
-                    <span className="text-xs font-bold text-stone-700 font-sans">Chi tiết hư hại</span>
-                  </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                    <div className="lg:col-span-4">
-                      <label className="block text-[11px] font-semibold text-stone-500 mb-1 uppercase tracking-wider">
-                        Tên cụm / Chi tiết hỏng hóc
-                      </label>
-                      <input
-                        type="text"
-                        value={item.itemName}
-                        onChange={(e) => handleItemChange(item.id, 'itemName', e.target.value)}
-                        placeholder="Ví dụ: Động cơ - lốc pít tông"
-                        className="w-full bg-white border border-stone-300 p-2 rounded-lg text-sm text-stone-800"
-                        required
-                      />
-                    </div>
-                    
-                    <div className="lg:col-span-5">
-                      <label className="block text-[11px] font-semibold text-stone-500 mb-1 uppercase tracking-wider">
-                        Hiện trạng hư hỏng thật cụ thể, chi tiết
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={item.damageDetail}
-                        onChange={(e) => handleItemChange(item.id, 'damageDetail', e.target.value)}
-                        placeholder="Ví dụ: Hư hỏng pít tông, xéc măng gãy, tiếng cò mổ kêu to..."
-                        className="w-full bg-white border border-stone-300 p-2 rounded-lg text-sm text-stone-800 font-sans leading-relaxed"
-                        required
-                      />
-                    </div>
-
-                    <div className="lg:col-span-3 pr-8">
-                      <label className="block text-[11px] font-semibold text-stone-500 mb-1 uppercase tracking-wider">
-                        Đề xuất xử lý phục hồi
-                      </label>
-                      <input
-                        type="text"
-                        value={item.solution}
-                        onChange={(e) => handleItemChange(item.id, 'solution', e.target.value)}
-                        placeholder="Ví dụ: Thay mới pít tông, vệ sinh..."
-                        className="w-full bg-white border border-stone-300 p-2 rounded-lg text-sm text-stone-800"
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Section 5: Conclusion */}
-          <div className="flex flex-col">
-            <label className="block text-xs font-semibold text-stone-600 mb-1.5 uppercase tracking-wider font-sans">
-              III. Kết luận chung của Hội đồng kỹ thuật
-            </label>
-            <textarea
-              rows={4}
-              value={conclusion}
-              onChange={(e) => setConclusion(e.target.value)}
-              placeholder="Ý kiến chung và phê nghị giải quyết khắc phục sự cố phương hại của Hội đồng kỹ thuật..."
-              className="w-full bg-stone-50 focus:bg-white border border-stone-300 p-3 rounded-lg text-sm text-stone-800 font-sans leading-relaxed resize-none"
-            />
-          </div>
-
-          {/* Footer Submit Bar */}
-          <div className="pt-4 border-t border-stone-200 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="px-5 py-2.5 bg-stone-150 hover:bg-stone-200 text-stone-750 font-bold rounded-xl transition-all font-sans text-sm cursor-pointer"
-            >
-              Hủy bỏ
-            </button>
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="px-6 py-2.5 bg-emerald-800 hover:bg-emerald-950 text-white font-bold rounded-xl transition-all font-sans text-xs md:text-sm shadow-md hover:shadow-lg flex items-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              {isSaving ? (
-                <>
-                  <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4m2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  <span>Đang lưu thông tin...</span>
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4" />
-                  <span>Lưu Biên Bản</span>
-                </>
-              )}
-            </button>
-          </div>
-
-        </form>
-      )}
+      </div>
 
     </div>
   );
