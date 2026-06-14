@@ -97,22 +97,22 @@ const TableRow = React.memo(({
   onChange: (tt: number, val: string) => void; 
 }) => {
   return (
-    <tr className="flex flex-col sm:table-row hover:bg-stone-50/50 transition-colors border-b-2 sm:border-b border-stone-300 sm:border-stone-200 mb-2 sm:mb-0">
-      <td className="hidden sm:table-cell py-2.5 px-3 text-center border-r border-stone-250 font-mono text-stone-500 w-12" style={{ fontSize: '12pt' }}>
+    <tr className="table-row hover:bg-stone-50/50 transition-colors border-b border-stone-300 mb-0">
+      <td className="table-cell py-2.5 px-3 text-center border-r border-stone-250 font-mono text-stone-500 w-12" style={{ fontSize: '12pt' }}>
         {tt}
       </td>
-      <td className="py-2.5 px-2 sm:px-3 sm:border-r border-stone-250 font-medium text-stone-800 text-[11pt] sm:text-[12pt] leading-tight sm:leading-normal bg-stone-100 sm:bg-transparent border-t border-x sm:border-transparent">
-        <span className="sm:hidden font-bold mr-1">{tt}.</span>{name} <span className="sm:hidden text-stone-500 font-normal text-[9pt]">(Số lượng: {quantity})</span>
+      <td className="py-2.5 px-3 border-r border-stone-250 font-medium text-stone-800 text-[12pt] leading-normal bg-transparent border-transparent">
+        {name}
       </td>
-      <td className="hidden sm:table-cell py-2.5 px-2 sm:px-3 text-center border-r border-stone-250 font-semibold font-mono text-stone-600 w-16 sm:w-24 whitespace-normal sm:whitespace-nowrap" style={{ fontSize: '11pt' }}>
+      <td className="table-cell py-2.5 px-3 text-center border-r border-stone-250 font-semibold font-mono text-stone-600 w-24 whitespace-nowrap" style={{ fontSize: '11pt' }}>
         {quantity}
       </td>
-      <td className="py-2.5 px-2 sm:px-2 text-center bg-transparent sm:bg-amber-50/10 w-full sm:w-64 border-b border-x sm:border-transparent">
+      <td className="py-2.5 px-2 text-center bg-transparent w-64 border-transparent">
         <AutoResizeTextarea 
           value={value}
           onChange={(e) => onChange(tt, e.target.value)}
           placeholder="Tình trạng"
-          className="w-full bg-white border border-stone-300 sm:border-stone-350 focus:border-stone-800 rounded px-2 sm:px-2.5 py-1.5 sm:py-1 text-stone-850 outline-none text-left"
+          className="w-full bg-white border border-stone-350 focus:border-stone-800 rounded px-2.5 py-1 text-stone-850 outline-none text-left"
           style={{ fontSize: '11pt' }}
         />
       </td>
@@ -601,20 +601,17 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
 
     const bodyHtml = `
       <div style="width: 100%;">
-        <table style="border: none; width: 100%; margin-bottom: 20px;">
-          <tr style="border: none;">
-            <td style="width: 45%; border: none; text-align: center; font-size: 13px; vertical-align: top;">
-              <div class="font-bold">CỤC HẬU CẦN - KỸ THUẬT QUÂN ĐOÀN 34</div>
-              <div class="font-bold underline">TIỂU ĐOÀN SCTH30</div>
-              <div style="margin-top: 5px;">Số: ${reportNo || '..../BB-SCTH30'}</div>
-            </td>
-            <td style="width: 55%; border: none; text-align: center; font-size: 13px; vertical-align: top;">
-              <div class="font-bold">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
-              <div class="font-bold underline" style="margin-bottom: 5px;">Độc lập - Tự do - Hạnh phúc</div>
-              <div style="font-style: italic;">${docDate}</div>
-            </td>
-          </tr>
-        </table>
+        <div style="text-align: center; margin-bottom: 20px;">
+          <div class="font-bold" style="font-size: 13px;">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+          <div class="font-bold underline" style="margin-bottom: 5px; font-size: 13px;">Độc lập - Tự do - Hạnh phúc</div>
+          <div style="font-style: italic; font-size: 13px;">${docDate || '&nbsp;'}</div>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 20px;">
+          <div class="font-bold" style="font-size: 13px;">CỤC HẬU CẦN - KỸ THUẬT QUÂN ĐOÀN 34</div>
+          <div class="font-bold underline" style="font-size: 13px;">TIỂU ĐOÀN SCTH30</div>
+          <div style="margin-top: 5px; font-size: 13px;">Số: ${reportNo || '..../BB-SCTH30'}</div>
+        </div>
 
         <div class="text-center font-bold text-xl" style="font-size: 18pt; margin: 30px 0 10px 0;">BIÊN BẢN GIAO NHẬN XE-MÁY VÀO SỬA CHỮA</div>
 
@@ -781,7 +778,7 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
       <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 bg-white border-b border-stone-200">
         <div className="flex items-center gap-2">
           <FileText className="h-5 w-5 text-emerald-600" />
-          <span className="text-xs font-bold uppercase tracking-wider text-stone-700">Biên bản bàn giao dã chiến (A4)</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-stone-700">Biên bản bàn giao TBKT</span>
           <span className="px-2 py-0.5 text-xs font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 rounded-md border border-emerald-200">{plateNumber || "NHẬP TAY / BẢN NHÁP"}</span>
         </div>
 
@@ -967,43 +964,40 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
 
           <fieldset disabled={!canEdit} className="border-0 p-0 m-0 min-w-0">
           {/* Form Header block */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start text-center mb-8 pb-4 border-b border-stone-200">
-            <div className="space-y-1">
-              <div className="font-bold text-stone-900 uppercase whitespace-nowrap" style={{ fontSize: '13pt' }}>CỤC HẬU CẦN - KỸ THUẬT QUÂN ĐOÀN 34</div>
-              <div className="font-bold text-stone-900 uppercase underline decoration-1 underline-offset-4 whitespace-nowrap" style={{ fontSize: '13pt' }}>TIỂU ĐOÀN SCTH30</div>
-              <div className="flex justify-center items-center gap-1.5 mt-3" style={{ fontSize: '13pt' }}>
-                <span className="text-stone-700 whitespace-nowrap">Số biên bản:</span>
-                <input 
-                  type="text" 
-                  value={reportNo} 
-                  onChange={(e) => {
-                    hasUserInteracted.current = true;
-                    setReportNo(e.target.value);
-                  }}
-                  placeholder="Nhập số biên bản..."
-                  className="w-48 bg-transparent border-b border-stone-400 focus:border-stone-850 outline-none px-2 py-0.5 text-center font-bold font-mono"
-                  style={{ fontSize: '13pt' }}
-                />
-              </div>
+          <div className="w-full text-center space-y-1 mb-6">
+            <div className="font-bold text-stone-900 uppercase" style={{ fontSize: '13pt' }}>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+            <div className="font-bold text-stone-900 uppercase underline decoration-1 underline-offset-4" style={{ fontSize: '13pt' }}>Độc lập - Tự do - Hạnh phúc</div>
+            <div className="flex justify-center items-center gap-1.5 mt-3" style={{ fontSize: '13pt' }}>
+              <input 
+                type="text" 
+                value={docDate} 
+                onChange={(e) => {
+                  hasUserInteracted.current = true;
+                  setDocDate(e.target.value);
+                }}
+                placeholder="Gia Lai, ngày... tháng... năm 2026"
+                className="w-80 bg-transparent border-b border-stone-400 focus:border-stone-850 outline-none px-2 py-0.5 text-center font-bold"
+                style={{ fontSize: '13pt' }}
+              />
             </div>
+          </div>
 
-            <div className="space-y-1">
-              <div className="font-bold text-stone-900 uppercase whitespace-nowrap" style={{ fontSize: '13pt' }}>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
-              <div className="font-bold text-stone-900 uppercase underline decoration-1 underline-offset-4 whitespace-nowrap" style={{ fontSize: '13pt' }}>Độc lập - Tự do - Hạnh phúc</div>
-              <div className="flex justify-center items-center gap-1.5 mt-3" style={{ fontSize: '13pt' }}>
-                <span className="text-stone-700 whitespace-nowrap">Ngày:</span>
-                <input 
-                  type="text" 
-                  value={docDate} 
-                  onChange={(e) => {
-                    hasUserInteracted.current = true;
-                    setDocDate(e.target.value);
-                  }}
-                  placeholder="Gia Lai, ngày... tháng... năm 2026"
-                  className="w-80 bg-transparent border-b border-stone-400 focus:border-stone-850 outline-none px-2 py-0.5 text-center font-bold"
-                  style={{ fontSize: '13pt' }}
-                />
-              </div>
+          <div className="w-full text-center space-y-1 mb-8 pb-4 border-b border-stone-200">
+            <div className="font-bold text-stone-900 uppercase" style={{ fontSize: '13pt' }}>CỤC HẬU CẦN - KỸ THUẬT QUÂN ĐOÀN 34</div>
+            <div className="font-bold text-stone-900 uppercase underline decoration-1 underline-offset-4" style={{ fontSize: '13pt' }}>TIỂU ĐOÀN SCTH30</div>
+            <div className="flex justify-center items-center gap-1.5 mt-3" style={{ fontSize: '13pt' }}>
+              <span className="text-stone-700 whitespace-nowrap">Số biên bản:</span>
+              <input 
+                type="text" 
+                value={reportNo} 
+                onChange={(e) => {
+                  hasUserInteracted.current = true;
+                  setReportNo(e.target.value);
+                }}
+                placeholder="Nhập số biên bản..."
+                className="w-48 bg-transparent border-b border-stone-400 focus:border-stone-850 outline-none px-2 py-0.5 text-center font-bold font-mono"
+                style={{ fontSize: '13pt' }}
+              />
             </div>
           </div>
 
