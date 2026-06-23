@@ -28,6 +28,11 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, initialData, onS
   const printRef = useRef<HTMLDivElement>(null);
   const currentUser = getCurrentUserSession();
 
+  const isAdmin = currentUser?.role === 'admin';
+  const isOwner = !!currentUser && !!initialData && (initialData.createdBy === currentUser.uid || initialData.createdBy === currentUser.username);
+  const canEditOps = currentUser ? canEditModule(currentUser.role, 'OPERATIONS') : false;
+  const hasPermission = canEditOps && (!existingFormId || isAdmin || isOwner);
+
   const [usersList, setUsersList] = useState<any[]>([]);
 
   const [formData, setFormData] = useState(() => {
@@ -107,8 +112,7 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, initialData, onS
   };
 
   const handleSave = async () => {
-    const canEdit = currentUser ? canEditModule(currentUser.role, 'OPERATIONS') : false;
-    if (!canEdit) {
+    if (!hasPermission) {
       alert('Bạn không có quyền thực hiện thao tác này.');
       return;
     }
@@ -168,8 +172,7 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, initialData, onS
   };
 
   const handleDelete = async () => {
-    const canEdit = currentUser ? canEditModule(currentUser.role, 'OPERATIONS') : false;
-    if (!canEdit) {
+    if (!hasPermission) {
       alert('Bạn không có quyền thực hiện thao tác này.');
       return;
     }
@@ -255,8 +258,7 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, initialData, onS
   };
 
   const addTaskRow = () => {
-    const canEdit = currentUser ? canEditModule(currentUser.role, 'OPERATIONS') : false;
-    if (!canEdit) {
+    if (!hasPermission) {
       alert('Bạn không có quyền thực hiện thao tác này.');
       return;
     }
@@ -267,8 +269,7 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, initialData, onS
   };
 
   const removeTaskRow = (index: number) => {
-    const canEdit = currentUser ? canEditModule(currentUser.role, 'OPERATIONS') : false;
-    if (!canEdit) {
+    if (!hasPermission) {
       alert('Bạn không có quyền thực hiện thao tác này.');
       return;
     }
@@ -301,7 +302,7 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, initialData, onS
         </div>
 
         <div className="flex items-center gap-2">
-          {existingFormId && (
+          {existingFormId && hasPermission && (
             <button 
               onClick={(e) => {
                 e.preventDefault();
@@ -328,13 +329,15 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, initialData, onS
             <FileDown className="w-4 h-4" />
             Xuất PDF
           </button>
-          <button 
-            onClick={handleSave}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors shadow-sm"
-          >
-            <Save className="w-4 h-4" />
-            Lưu kế hoạch
-          </button>
+          {hasPermission && (
+            <button 
+              onClick={handleSave}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors shadow-sm"
+            >
+              <Save className="w-4 h-4" />
+              Lưu kế hoạch
+            </button>
+          )}
         </div>
       </div>
 
@@ -348,6 +351,7 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, initialData, onS
           }}
           className="bg-white shadow-xl w-[210mm] min-w-[210mm] min-h-[297mm] p-[10mm] sm:p-[20mm] mx-auto text-black print:shadow-none print:m-0 print:p-0 print:max-w-none origin-top-left sm:origin-top print:!zoom-100 relative"
         >
+          <fieldset disabled={!hasPermission} className="border-0 p-0 m-0 min-w-0">
           {/* Header */}
           <div className="flex justify-between items-start mb-10">
             <div className="text-center font-bold">
@@ -536,7 +540,8 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, initialData, onS
                />
             </div>
           </div>
-</div>
+          </fieldset>
+        </div>
       </div>
     </div>
   );

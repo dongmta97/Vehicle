@@ -354,11 +354,15 @@ export function InspectionTab({
                   setActiveFormMode('NONE');
                 }}
                 onSave={async (savedForm: any, isSilent: boolean) => {
-                  await loadAllDamageProtocols();
-                  if (savedForm && !isSilent) {
-                    setActiveFormMode('NONE');
-                  } else if (savedForm && isSilent) {
-                    setCurrentInspection(savedForm);
+                  if (!isSilent) {
+                    await loadAllDamageProtocols();
+                    if (savedForm) {
+                      setActiveFormMode('NONE');
+                    }
+                  } else {
+                    // Running in the background silently.
+                    // Do NOT update currentInspection or trigger loadAllDamageProtocols
+                    // because it causes the form to re-render and interrupts user typing.
                   }
                 }}
                 onReset={resetForm}

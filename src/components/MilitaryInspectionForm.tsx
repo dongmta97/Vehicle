@@ -488,9 +488,9 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
        localStorage.setItem(dpKey, JSON.stringify(dpList));
 
        setExistingForm(damageProtocolPayload);
-       setSaveStatus('Đã lưu');
        
        if (!silent) {
+          setSaveStatus('Đã lưu');
           setIsSuccessAlert(true);
           setTimeout(() => setIsSuccessAlert(false), 4000);
        }
@@ -500,7 +500,7 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
        }
     } catch (err) {
        console.error("Save failed:", err);
-       setSaveStatus('Lỗi lưu');
+       if (!silent) setSaveStatus('Lỗi lưu');
     } finally {
        if (!silent) {
           setIsSaving(false);
@@ -601,17 +601,20 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
 
     const bodyHtml = `
       <div style="width: 100%;">
-        <div style="text-align: center; margin-bottom: 20px;">
-          <div class="font-bold" style="font-size: 13px;">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
-          <div class="font-bold underline" style="margin-bottom: 5px; font-size: 13px;">Độc lập - Tự do - Hạnh phúc</div>
-          <div style="font-style: italic; font-size: 13px;">${docDate || '&nbsp;'}</div>
-        </div>
-
-        <div style="text-align: center; margin-bottom: 20px;">
-          <div class="font-bold" style="font-size: 13px;">CỤC HẬU CẦN - KỸ THUẬT QUÂN ĐOÀN 34</div>
-          <div class="font-bold underline" style="font-size: 13px;">TIỂU ĐOÀN SCTH30</div>
-          <div style="margin-top: 5px; font-size: 13px;">Số: ${reportNo || '..../BB-SCTH30'}</div>
-        </div>
+        <table style="width: 100%; border: none; margin-bottom: 20px;">
+          <tr style="border: none;">
+            <td style="width: 50%; text-align: center; vertical-align: top; border: none; padding: 0;">
+              <div class="font-bold" style="font-size: 13px;">CỤC HẬU CẦN - KỸ THUẬT QUÂN ĐOÀN 34</div>
+              <div class="font-bold underline" style="font-size: 13px;">TIỂU ĐOÀN SCTH30</div>
+              <div style="margin-top: 5px; font-size: 13px;">Số: ${reportNo || '..../BB-SCTH30'}</div>
+            </td>
+            <td style="width: 50%; text-align: center; vertical-align: top; border: none; padding: 0;">
+              <div class="font-bold" style="font-size: 13px;">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+              <div class="font-bold underline" style="margin-bottom: 5px; font-size: 13px;">Độc lập - Tự do - Hạnh phúc</div>
+              <div style="font-style: italic; font-size: 13px;">${docDate || '&nbsp;'}</div>
+            </td>
+          </tr>
+        </table>
 
         <div class="text-center font-bold text-xl" style="font-size: 18pt; margin: 30px 0 10px 0;">BIÊN BẢN GIAO NHẬN XE-MÁY VÀO SỬA CHỮA</div>
 
@@ -963,41 +966,45 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
           `}} />
 
           <fieldset disabled={!canEdit} className="border-0 p-0 m-0 min-w-0">
-          {/* Form Header block */}
-          <div className="w-full text-center space-y-1 mb-6">
-            <div className="font-bold text-stone-900 uppercase" style={{ fontSize: '13pt' }}>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
-            <div className="font-bold text-stone-900 uppercase underline decoration-1 underline-offset-4" style={{ fontSize: '13pt' }}>Độc lập - Tự do - Hạnh phúc</div>
-            <div className="flex justify-center items-center gap-1.5 mt-3" style={{ fontSize: '13pt' }}>
-              <input 
-                type="text" 
-                value={docDate} 
-                onChange={(e) => {
-                  hasUserInteracted.current = true;
-                  setDocDate(e.target.value);
-                }}
-                placeholder="Gia Lai, ngày... tháng... năm 2026"
-                className="w-80 bg-transparent border-b border-stone-400 focus:border-stone-850 outline-none px-2 py-0.5 text-center font-bold"
-                style={{ fontSize: '13pt' }}
-              />
+          {/* Form Header block - Responsive two columns on desktop, stacked on mobile */}
+          <div className="w-full flex flex-col sm:flex-row sm:justify-between items-center sm:items-start mb-6 sm:mb-8 pb-4 border-b border-stone-200 gap-y-6 sm:gap-y-0">
+            {/* National Mottos - Right side on desktop, Top on mobile */}
+            <div className="w-full sm:w-1/2 text-center space-y-1 order-1 sm:order-2">
+              <div className="font-bold text-stone-900 uppercase" style={{ fontSize: '13pt' }}>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+              <div className="font-bold text-stone-900 uppercase underline decoration-1 underline-offset-4" style={{ fontSize: '13pt' }}>Độc lập - Tự do - Hạnh phúc</div>
+              <div className="flex justify-center items-center gap-1.5 mt-3" style={{ fontSize: '13pt' }}>
+                <input 
+                  type="text" 
+                  value={docDate} 
+                  onChange={(e) => {
+                    hasUserInteracted.current = true;
+                    setDocDate(e.target.value);
+                  }}
+                  placeholder="Gia Lai, ngày... tháng... năm 2026"
+                  className="w-full max-w-[320px] bg-transparent border-b border-stone-400 focus:border-stone-850 outline-none px-2 py-0.5 text-center font-bold"
+                  style={{ fontSize: '13pt' }}
+                />
+              </div>
             </div>
-          </div>
 
-          <div className="w-full text-center space-y-1 mb-8 pb-4 border-b border-stone-200">
-            <div className="font-bold text-stone-900 uppercase" style={{ fontSize: '13pt' }}>CỤC HẬU CẦN - KỸ THUẬT QUÂN ĐOÀN 34</div>
-            <div className="font-bold text-stone-900 uppercase underline decoration-1 underline-offset-4" style={{ fontSize: '13pt' }}>TIỂU ĐOÀN SCTH30</div>
-            <div className="flex justify-center items-center gap-1.5 mt-3" style={{ fontSize: '13pt' }}>
-              <span className="text-stone-700 whitespace-nowrap">Số biên bản:</span>
-              <input 
-                type="text" 
-                value={reportNo} 
-                onChange={(e) => {
-                  hasUserInteracted.current = true;
-                  setReportNo(e.target.value);
-                }}
-                placeholder="Nhập số biên bản..."
-                className="w-48 bg-transparent border-b border-stone-400 focus:border-stone-850 outline-none px-2 py-0.5 text-center font-bold font-mono"
-                style={{ fontSize: '13pt' }}
-              />
+            {/* Organization - Left side on desktop, Bottom on mobile */}
+            <div className="w-full sm:w-1/2 text-center space-y-1 order-2 sm:order-1">
+              <div className="font-bold text-stone-900 uppercase" style={{ fontSize: '13pt' }}>CỤC HẬU CẦN - KỸ THUẬT QUÂN ĐOÀN 34</div>
+              <div className="font-bold text-stone-900 uppercase underline decoration-1 underline-offset-4" style={{ fontSize: '13pt' }}>TIỂU ĐOÀN SCTH30</div>
+              <div className="flex justify-center items-center gap-1.5 mt-3" style={{ fontSize: '13pt' }}>
+                <span className="text-stone-700 whitespace-nowrap">Số biên bản:</span>
+                <input 
+                  type="text" 
+                  value={reportNo} 
+                  onChange={(e) => {
+                    hasUserInteracted.current = true;
+                    setReportNo(e.target.value);
+                  }}
+                  placeholder="Nhập số..."
+                  className="w-32 bg-transparent border-b border-stone-400 focus:border-stone-850 outline-none px-2 py-0.5 text-center font-bold font-mono"
+                  style={{ fontSize: '13pt' }}
+                />
+              </div>
             </div>
           </div>
 

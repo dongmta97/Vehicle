@@ -159,6 +159,16 @@ export function OperationsTab() {
     e.stopPropagation();
 
     const currentUser = getCurrentUserSession();
+    
+    const formRecord = operationsData.find(f => f.id === formId);
+    const isAdmin = currentUser?.role === 'admin';
+    const isOwner = !!currentUser && !!formRecord && (formRecord.createdBy === currentUser.uid || formRecord.createdBy === currentUser.username);
+
+    if (!isAdmin && !isOwner) {
+      alert('Bạn chỉ có quyền xóa hồ sơ do mình tạo.');
+      return;
+    }
+
     const canEdit = currentUser ? canEditModule(currentUser.role, 'OPERATIONS') : false;
     if (!canEdit) {
       alert('Bạn không có quyền thực hiện thao tác này.');
