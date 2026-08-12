@@ -1,3 +1,4 @@
+import { normalizeNFC } from '../utils/stringUtils';
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Save, FileDown, Printer, Plus, Trash2 } from 'lucide-react';
 import { getCurrentUserSession } from '../services/dbService';
@@ -12,13 +13,14 @@ const DEFAULT_TASKS = [
 ];
 
 interface Props {
+  targetSessionId?: string;
   existingFormId?: string;
   onSaved?: (payload?: any) => void;
   onClose: () => void;
   initialData?: any;
 }
 
-export const TaskPlanForm: React.FC<Props> = ({ existingFormId, initialData, onSaved, onClose }) => {
+export const TaskPlanForm: React.FC<Props> = ({ existingFormId, targetSessionId, initialData, onSaved, onClose }) => {
   const [zoom, setZoom] = useState(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 800) {
       return Math.max(30, Math.floor((window.innerWidth) / 7.94));
@@ -130,13 +132,14 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, initialData, onS
       } catch (err) {}
 
       const payload = {
+        repairSessionId: targetSessionId || (docExists ? existingDoc?.repairSessionId : null),
         id: docId,
         vehicleId: 'NA', // Not tied to a vehicle
         module: 'OPERATIONS',
         templateType: 'TASK_PLAN',
         templateName: 'Kế hoạch nhiệm vụ chuyên môn của đơn vị',
         stageName: 'Kế hoạch nhiệm vụ',
-        formData: formData,
+        formData: normalizeNFC(formData),
         isDeleted: false,
         createdBy: docExists && existingDoc?.createdBy ? existingDoc.createdBy : (currentUser?.uid || currentUser?.username || 'unknown'),
         createdByName: docExists && existingDoc?.createdByName ? existingDoc.createdByName : (currentUser?.fullName || 'unknown'),
@@ -145,9 +148,9 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, initialData, onS
       };
 
       if (docExists) {
-        await DataService.update('repairForms', docId, payload);
+        await DataService.update('repairForms', docId, normalizeNFC(payload));
       } else {
-        await DataService.save('repairForms', payload);
+        await DataService.save('repairForms', normalizeNFC(payload));
       }
       
       // Update local storage cache
@@ -196,7 +199,7 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, initialData, onS
           deletedByName: currentUser?.fullName || currentUser?.username || "Người dùng",
           deletedByRole: currentUser?.role || "Không xác định",
         };
-        await DataService.update('repairForms', docId, updatePayload);
+        await DataService.update('repairForms', docId, normalizeNFC(updatePayload));
       } catch (err) {
         console.warn('Could not update firebase for delete, continuing locally:', err);
       }
@@ -357,14 +360,14 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, initialData, onS
             <div className="text-center font-bold">
                <input 
                   type="text" 
-                  value={formData.unit}
-                  onChange={(e) => setFormData({...formData, unit: e.target.value})}
+                  value={typeof (formData.unit) === 'string' ? (formData.unit).normalize('NFC') : (formData.unit)}
+                  onChange={(e) => setFormData({...formData, unit: e.target.value.normalize('NFC')})}
                   className="text-base text-center bg-transparent outline-none m-0 leading-tight border-b border-dotted border-transparent hover:border-black focus:border-black transition-colors min-w-[200px]" 
                 />
                <input 
                   type="text" 
-                  value={formData.subUnit}
-                  onChange={(e) => setFormData({...formData, subUnit: e.target.value})}
+                  value={typeof (formData.subUnit) === 'string' ? (formData.subUnit).normalize('NFC') : (formData.subUnit)}
+                  onChange={(e) => setFormData({...formData, subUnit: e.target.value.normalize('NFC')})}
                   className="text-base text-center block bg-transparent outline-none m-0 mt-1 leading-tight border-b border-dotted border-transparent hover:border-black focus:border-black transition-colors min-w-[200px]" 
                 />
             </div>
@@ -377,8 +380,8 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, initialData, onS
                  <span>Tuần</span>
                  <input 
                     type="text" 
-                    value={formData.week}
-                    onChange={(e) => setFormData({...formData, week: e.target.value})}
+                    value={typeof (formData.week) === 'string' ? (formData.week).normalize('NFC') : (formData.week)}
+                    onChange={(e) => setFormData({...formData, week: e.target.value.normalize('NFC')})}
                     className="w-12 text-center border-b border-dotted border-black bg-transparent outline-none pb-0" 
                   />
                </div>
@@ -386,8 +389,8 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, initialData, onS
                  <span>Tháng</span>
                  <input 
                     type="text" 
-                    value={formData.month || ''}
-                    onChange={(e) => setFormData({...formData, month: e.target.value})}
+                    value={typeof (formData.month || '') === 'string' ? (formData.month || '').normalize('NFC') : (formData.month || '')}
+                    onChange={(e) => setFormData({...formData, month: e.target.value.normalize('NFC')})}
                     className="w-12 text-center border-b border-dotted border-black bg-transparent outline-none pb-0" 
                   />
                </div>
@@ -395,8 +398,8 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, initialData, onS
                  <span>Năm</span>
                  <input 
                     type="text" 
-                    value={formData.year}
-                    onChange={(e) => setFormData({...formData, year: e.target.value})}
+                    value={typeof (formData.year) === 'string' ? (formData.year).normalize('NFC') : (formData.year)}
+                    onChange={(e) => setFormData({...formData, year: e.target.value.normalize('NFC')})}
                     className="w-16 text-center border-b border-dotted border-black bg-transparent outline-none pb-0" 
                   />
                </div>
@@ -408,8 +411,8 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, initialData, onS
                <span className="whitespace-nowrap italic">Ngày lập:</span>
                <input 
                   type="text" 
-                  value={formData.createdDate}
-                  onChange={(e) => setFormData({...formData, createdDate: e.target.value})}
+                  value={typeof (formData.createdDate) === 'string' ? (formData.createdDate).normalize('NFC') : (formData.createdDate)}
+                  onChange={(e) => setFormData({...formData, createdDate: e.target.value.normalize('NFC')})}
                   className="border-b border-dotted border-black flex-1 bg-transparent outline-none pb-0 font-bold" 
                />
             </div>
@@ -417,8 +420,8 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, initialData, onS
                <span className="whitespace-nowrap italic">Người lập:</span>
                <input 
                   type="text" 
-                  value={formData.createdBy}
-                  onChange={(e) => setFormData({...formData, createdBy: e.target.value})}
+                  value={typeof (formData.createdBy) === 'string' ? (formData.createdBy).normalize('NFC') : (formData.createdBy)}
+                  onChange={(e) => setFormData({...formData, createdBy: e.target.value.normalize('NFC')})}
                   className="border-b border-dotted border-black flex-1 bg-transparent outline-none pb-0 font-bold" 
                />
             </div>
@@ -439,16 +442,16 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, initialData, onS
                     <tr className="group" key={item.id || index}>
                       <td className="border border-black p-0 align-top">
                         <AutoResizeTextarea 
-                          value={item.date || ''}
-                          onChange={(e) => handleTaskChange(index, 'date', e.target.value)}
+                          value={typeof (item.date || '') === 'string' ? (item.date || '').normalize('NFC') : (item.date || '')}
+                          onChange={(e) => handleTaskChange(index, 'date', e.target.value.normalize('NFC'))}
                           className="w-full h-full min-h-[48px] bg-transparent outline-none px-2 py-2 text-center text-emerald-800 print:text-black font-semibold"
                           placeholder="Thứ..."
                         />
                       </td>
                       <td className="border border-black p-0 align-top">
                         <AutoResizeTextarea 
-                          value={item.content || ''}
-                          onChange={(e) => handleTaskChange(index, 'content', e.target.value)}
+                          value={typeof (item.content || '') === 'string' ? (item.content || '').normalize('NFC') : (item.content || '')}
+                          onChange={(e) => handleTaskChange(index, 'content', e.target.value.normalize('NFC'))}
                           className="w-full h-full min-h-[48px] bg-transparent outline-none px-2 py-2 text-emerald-800 print:text-black"
                           placeholder="Nhập nội dung..."
                         />
@@ -528,14 +531,14 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, initialData, onS
               <input 
                 type="text" 
                 className="w-full text-center outline-none bg-transparent font-bold text-[15px] print:text-black" 
-                value={formData['sign_NGƯỜI LẬP KẾ HOẠCH'] || ''} 
-                onChange={(e) => setFormData({...formData, 'sign_NGƯỜI LẬP KẾ HOẠCH': e.target.value})}
+                value={typeof (formData['sign_NGƯỜI LẬP KẾ HOẠCH'] || '') === 'string' ? (formData['sign_NGƯỜI LẬP KẾ HOẠCH'] || '').normalize('NFC') : (formData['sign_NGƯỜI LẬP KẾ HOẠCH'] || '')} 
+                onChange={(e) => setFormData({...formData, 'sign_NGƯỜI LẬP KẾ HOẠCH': e.target.value.normalize('NFC')})}
                 placeholder="..."
               />
               <input 
                  type="text" 
-                 value={formData.createdBy}
-                 onChange={(e) => setFormData({...formData, createdBy: e.target.value})}
+                 value={typeof (formData.createdBy) === 'string' ? (formData.createdBy).normalize('NFC') : (formData.createdBy)}
+                 onChange={(e) => setFormData({...formData, createdBy: e.target.value.normalize('NFC')})}
                  className="font-bold text-[15px] text-center bg-transparent outline-none m-0 leading-tight border-b border-dotted border-transparent hover:border-black focus:border-black transition-colors min-w-[200px]" 
                />
             </div>

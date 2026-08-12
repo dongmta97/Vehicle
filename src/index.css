@@ -1,1 +1,26 @@
 @import "tailwindcss";
+
+/* --- BẮT ĐẦU: TỐI ƯU HÓA HIỂN THỊ TIẾNG VIỆT CHỐNG RỚT DẤU --- */
+body, input, textarea, select, button {
+  text-rendering: optimizeLegibility !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+}
+
+/* Ép cứng font chuẩn văn bản cho toàn bộ cấu trúc in ấn */
+@media print {
+  body, *, .print\:block, .print\:flex, .print\:table {
+    font-family: "Times New Roman", Times, serif !important;
+    text-rendering: optimizeLegibility !important;
+  }
+}
+/* --- KẾT THÚC --- */
+
+/* Tinh chỉnh chiều cao dòng cho bản in để không bị cắt chữ có dấu 2 tầng */
+@media print {
+  body, input, textarea, td, th, div, span, p {
+    line-height: 1.5 !important;
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+  }
+}

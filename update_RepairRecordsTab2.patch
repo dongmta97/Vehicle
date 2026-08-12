@@ -1,0 +1,10 @@
+--- src/components/RepairRecordsTab.tsx
++++ src/components/RepairRecordsTab.tsx
+@@ -421,7 +421,7 @@
+     const filteredForms = mergedForms.filter((f: any) => {
+         return f.templateType === targetTemplateId &&
+                f.isDeleted !== true &&
+                f.isDeleted !== 'true' &&
+-               (!targetRepairSessionId || f.repairSessionId === targetRepairSessionId);
++               (targetRepairSessionId ? f.repairSessionId === targetRepairSessionId : f.vehicleId === selectedVehicle?.vehicleId);
+     });

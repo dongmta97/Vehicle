@@ -1,0 +1,32 @@
+--- src/components/RepairRecordsTab.tsx
++++ src/components/RepairRecordsTab.tsx
+@@ -402,11 +402,28 @@
+ 
+     console.log("TARGET TEMPLATE =", targetTemplateId);
+ 
++    let targetRepairSessionId: string | null = null;
++    if (selectedVehicle) {
++      try {
++        const sessions = await DataService.load('repairSessions') || [];
++        const vehicleSessions = sessions.filter((s: any) => s.vehicleId === selectedVehicle.vehicleId && !s.isDeleted);
++        const openSession = vehicleSessions.find((s: any) => s.status !== 'CLOSED' && s.workflowState !== 'HANDED_OVER' && !s.closedAt);
++        if (openSession) {
++          targetRepairSessionId = openSession.id;
++        } else if (vehicleSessions.length > 0) {
++          vehicleSessions.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
++          targetRepairSessionId = vehicleSessions[0].id;
++        }
++      } catch (err) {
++        console.error("Error finding repair session:", err);
++      }
++    }
++
+     const filteredForms = mergedForms.filter((f: any) => {
+         return f.templateType === targetTemplateId &&
+                f.isDeleted !== true &&
+-               f.isDeleted !== 'true';
++               f.isDeleted !== 'true' &&
++               (targetRepairSessionId ? f.repairSessionId === targetRepairSessionId : false);
+     });
+ 
+     console.log("FILTERED COUNT =", filteredForms.length);

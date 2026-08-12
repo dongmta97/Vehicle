@@ -1,0 +1,1827 @@
+{
+  "templateVersion": 1,
+  "vehicleCode": "KAMAZ-SELECT",
+  "vehicleName": "Kamaz",
+  "protocolType": "KIEM_CHON",
+  "sections": [
+    {
+      "name": "1.1- TRANG BỊ NGOÀI",
+      "items": [
+        {
+          "name": "Cụm van tắt máy",
+          "quantity": "1"
+        },
+        {
+          "name": "Bộ Đ/khiển ga BCA",
+          "quantity": "1b"
+        },
+        {
+          "name": "Nắp đậy dàn cò mổ",
+          "quantity": "2"
+        },
+        {
+          "name": "Cụm ống xả",
+          "quantity": "2"
+        },
+        {
+          "name": "Cụm ống hút",
+          "quantity": "2"
+        },
+        {
+          "name": "Bộ nắp đậy đầu máy",
+          "quantity": "1b"
+        },
+        {
+          "name": "Ống hút ngang + cổ",
+          "quantity": "1b"
+        },
+        {
+          "name": "Ống nước nắp máy",
+          "quantity": "3"
+        },
+        {
+          "name": "Cổ ốngnước trêndưới",
+          "quantity": "2"
+        },
+        {
+          "name": "Ống nước ngang",
+          "quantity": "1"
+        },
+        {
+          "name": "Ống nước từ bơm lên",
+          "quantity": "1"
+        },
+        {
+          "name": "Ống thoát hơi máy",
+          "quantity": "1"
+        },
+        {
+          "name": "Nắp đổ nhớt",
+          "quantity": "1"
+        },
+        {
+          "name": "Ống đổ nhớt",
+          "quantity": "1"
+        },
+        {
+          "name": "Thước đo nhớt + vỏ",
+          "quantity": "1b"
+        },
+        {
+          "name": "Lọc nhớt ly tâm (tinh)",
+          "quantity": "1b"
+        },
+        {
+          "name": "Lọc nhớt thô",
+          "quantity": "1b"
+        },
+        {
+          "name": "Đườngốngnhớtrắcco",
+          "quantity": "1b"
+        },
+        {
+          "name": "Lọc nhiên liệu",
+          "quantity": "2"
+        },
+        {
+          "name": "Bát bắt lọc N/liệu",
+          "quantity": "1"
+        },
+        {
+          "name": "ĐườngốngNL+rắcco",
+          "quantity": "1b"
+        },
+        {
+          "name": "Bát máy phát",
+          "quantity": "1"
+        },
+        {
+          "name": "Bát câu máy",
+          "quantity": "2"
+        },
+        {
+          "name": "Cánh quạt gió",
+          "quantity": "1"
+        },
+        {
+          "name": "Bích bắt quạt gió",
+          "quantity": "1"
+        },
+        {
+          "name": "Puly quạt gió",
+          "quantity": "1"
+        },
+        {
+          "name": "Puly bơm nước",
+          "quantity": "1"
+        },
+        {
+          "name": "Puly trục cơ",
+          "quantity": "1"
+        },
+        {
+          "name": "Puly tăng đưa + bát",
+          "quantity": "1b"
+        },
+        {
+          "name": "Khóa nước thân máy",
+          "quantity": "2"
+        },
+        {
+          "name": "Khóa nhớt",
+          "quantity": "1"
+        },
+        {
+          "name": "Vỏ bọc bánh đà",
+          "quantity": "1"
+        },
+        {
+          "name": "Cạc te động cơ",
+          "quantity": "1"
+        },
+        {
+          "name": "Tấm che dưới ly hợp",
+          "quantity": "1"
+        },
+        {
+          "name": "Chân máy",
+          "quantity": "1b"
+        },
+        {
+          "name": "Ống cao áp",
+          "quantity": "6"
+        },
+        {
+          "name": "Ống dầu hồi",
+          "quantity": "1b"
+        }
+      ]
+    },
+    {
+      "name": "1.2- CỤM – CHI TIẾT",
+      "items": [
+        {
+          "name": "Bơm cao áp",
+          "quantity": "1b"
+        },
+        {
+          "name": "Bộ đôi ty bơm CA",
+          "quantity": "6"
+        },
+        {
+          "name": "Trục cam",
+          "quantity": "1"
+        },
+        {
+          "name": "Con đội",
+          "quantity": "6"
+        },
+        {
+          "name": "Vòng răng",
+          "quantity": "6"
+        },
+        {
+          "name": "Chén chặn",
+          "quantity": "6"
+        },
+        {
+          "name": "Lò xo",
+          "quantity": "6"
+        },
+        {
+          "name": "Van 1 chiều",
+          "quantity": "1"
+        },
+        {
+          "name": "Bộ điều tốc",
+          "quantity": "1"
+        },
+        {
+          "name": "Bộ phun sớm",
+          "quantity": "1"
+        },
+        {
+          "name": "Thước ga",
+          "quantity": "1"
+        },
+        {
+          "name": "Bơm thấp áp (bơmtay",
+          "quantity": "1b"
+        },
+        {
+          "name": "Bộ dẫn động BCA",
+          "quantity": "1b"
+        },
+        {
+          "name": "Trục dẫn động BCA",
+          "quantity": "1"
+        },
+        {
+          "name": "Mặt bích dẫn động",
+          "quantity": "2"
+        },
+        {
+          "name": "Kim phun",
+          "quantity": "6b"
+        },
+        {
+          "name": "Đầu kim phun",
+          "quantity": "6"
+        },
+        {
+          "name": "Quạt tăng áp",
+          "quantity": "2b"
+        },
+        {
+          "name": "Bơm nhớt",
+          "quantity": "1b"
+        },
+        {
+          "name": "Bích giữa nắp &thân",
+          "quantity": "1"
+        },
+        {
+          "name": "Trục chủ động",
+          "quantity": "1"
+        },
+        {
+          "name": "Trục bị động",
+          "quantity": "1"
+        },
+        {
+          "name": "Bánh răng",
+          "quantity": "2"
+        },
+        {
+          "name": "Bơm nước",
+          "quantity": "1b"
+        },
+        {
+          "name": "Cổ ống nước bơm",
+          "quantity": "1"
+        },
+        {
+          "name": "Trục bơm",
+          "quantity": "1"
+        },
+        {
+          "name": "Guồng bơm",
+          "quantity": "1"
+        },
+        {
+          "name": "Bộ phớt phíp",
+          "quantity": "1"
+        },
+        {
+          "name": "Cụm D/động Q/gió",
+          "quantity": "1b"
+        },
+        {
+          "name": "Bích bắt cánh quạt",
+          "quantity": "1"
+        },
+        {
+          "name": "Trục quạt gió",
+          "quantity": "1"
+        },
+        {
+          "name": "Cánh xoắn",
+          "quantity": "1"
+        },
+        {
+          "name": "Ổ đỡ đầu trục cam",
+          "quantity": "1"
+        },
+        {
+          "name": "Đệm chặn trục cam",
+          "quantity": "1"
+        },
+        {
+          "name": "Bánh răng cam - cơ",
+          "quantity": "1.b"
+        },
+        {
+          "name": "B/răng trung gian",
+          "quantity": "1"
+        },
+        {
+          "name": "B/răng D/động BCA",
+          "quantity": "1"
+        },
+        {
+          "name": "B/răng D/độngQ/gió",
+          "quantity": "1"
+        },
+        {
+          "name": "Bơm hơi",
+          "quantity": "1b"
+        },
+        {
+          "name": "Van điều tiết áp suất",
+          "quantity": "1"
+        },
+        {
+          "name": "Ốngnhớt+rắc coB/hơi",
+          "quantity": "1b"
+        },
+        {
+          "name": "Ongnước,rắc coB/hơi",
+          "quantity": "1b"
+        },
+        {
+          "name": "Nắp cửa hút khí vào",
+          "quantity": "1"
+        },
+        {
+          "name": "Trục cơ",
+          "quantity": "1"
+        },
+        {
+          "name": "Bánh răng trục cơ",
+          "quantity": "1"
+        },
+        {
+          "name": "Tay biên",
+          "quantity": "2"
+        },
+        {
+          "name": "Bạc biên",
+          "quantity": "1b"
+        },
+        {
+          "name": "Piston, chốt, V/găng",
+          "quantity": "2b"
+        },
+        {
+          "name": "Xi lanh",
+          "quantity": "2"
+        },
+        {
+          "name": "Lò xo van 1 chiều",
+          "quantity": "2"
+        },
+        {
+          "name": "Van 1 chiều",
+          "quantity": "2"
+        },
+        {
+          "name": "Bộ ly hợp",
+          "quantity": "1b"
+        },
+        {
+          "name": "Đĩa ép",
+          "quantity": "1"
+        },
+        {
+          "name": "Đĩa ép trung gian",
+          "quantity": "1"
+        },
+        {
+          "name": "Vòng tì",
+          "quantity": "1"
+        },
+        {
+          "name": "Cần bẩy",
+          "quantity": "4"
+        },
+        {
+          "name": "Lò xo đĩa ép",
+          "quantity": "1b"
+        },
+        {
+          "name": "Đĩa thép ma sát",
+          "quantity": "2"
+        },
+        {
+          "name": "Bố ma sát",
+          "quantity": "4"
+        },
+        {
+          "name": "Bánh đà",
+          "quantity": "1"
+        },
+        {
+          "name": "Vành răng bánh đà",
+          "quantity": "1"
+        },
+        {
+          "name": "Nắp máy",
+          "quantity": "6"
+        },
+        {
+          "name": "Trục cò mổ",
+          "quantity": "6"
+        },
+        {
+          "name": "Cò mổ",
+          "quantity": "12"
+        },
+        {
+          "name": "Bạc cò mổ",
+          "quantity": "12"
+        },
+        {
+          "name": "Xu páp hút + xả",
+          "quantity": "6+6"
+        },
+        {
+          "name": "Miệng xie XP hút+xả",
+          "quantity": "6+6"
+        },
+        {
+          "name": "Ống D/hướng xupáp",
+          "quantity": "12"
+        },
+        {
+          "name": "Lò xo xu páp",
+          "quantity": "24"
+        },
+        {
+          "name": "Đế lò xo",
+          "quantity": "12"
+        },
+        {
+          "name": "Chén chặn xu páp",
+          "quantity": "12"
+        },
+        {
+          "name": "Móng hãm xu páp",
+          "quantity": "24"
+        },
+        {
+          "name": "Đũa đẩy",
+          "quantity": "12"
+        },
+        {
+          "name": "Con đội",
+          "quantity": "12"
+        },
+        {
+          "name": "Trục cam ( cote :",
+          "quantity": "1"
+        },
+        {
+          "name": "Bạc đầu nhỏ Tr/cam",
+          "quantity": "1"
+        },
+        {
+          "name": "Bạc trục cam",
+          "quantity": "1b"
+        },
+        {
+          "name": "Trục cơ ( cote :",
+          "quantity": "1"
+        },
+        {
+          "name": "Bạc cổ chính",
+          "quantity": "1b"
+        },
+        {
+          "name": "Bạc cổ biên",
+          "quantity": "1b"
+        },
+        {
+          "name": "Đệm dọc trục",
+          "quantity": "2"
+        },
+        {
+          "name": "Vòng chặn nhớt T+ S",
+          "quantity": "2"
+        },
+        {
+          "name": "Bích chặn trục cơ",
+          "quantity": "1"
+        },
+        {
+          "name": "Piston ( cote :",
+          "quantity": "6"
+        },
+        {
+          "name": "Chốt piston",
+          "quantity": "6"
+        },
+        {
+          "name": "Phe gài chốt",
+          "quantity": "12"
+        },
+        {
+          "name": "Vòng găng",
+          "quantity": "6b"
+        },
+        {
+          "name": "Tay biên",
+          "quantity": "6"
+        },
+        {
+          "name": "Bạc thau tay biên",
+          "quantity": "6"
+        },
+        {
+          "name": "Xilanh ( cote :",
+          "quantity": "6"
+        },
+        {
+          "name": "Thân máy",
+          "quantity": "1"
+        }
+      ]
+    },
+    {
+      "name": "*- Vòng bi động cơ các loại",
+      "items": [
+        {
+          "name": "Vòng bi 1180304.K1",
+          "quantity": "1"
+        },
+        {
+          "name": "Vòng bi 1160305.K1",
+          "quantity": "1"
+        },
+        {
+          "name": "Vòng bi 6203",
+          "quantity": "1"
+        },
+        {
+          "name": "Vòng bi 30204",
+          "quantity": "2"
+        },
+        {
+          "name": "Vòng bi 6006.Z",
+          "quantity": "1"
+        },
+        {
+          "name": "Vòng bi 6201-2RS",
+          "quantity": "2"
+        },
+        {
+          "name": "Vòng bi 6207 B/hơi",
+          "quantity": "2"
+        },
+        {
+          "name": "Vòng bi 6014",
+          "quantity": "1"
+        },
+        {
+          "name": "Vòng bi 6305",
+          "quantity": "2"
+        },
+        {
+          "name": "Vòng bi 6204",
+          "quantity": "1"
+        },
+        {
+          "name": "Vòng bi 6205",
+          "quantity": "1"
+        }
+      ]
+    },
+    {
+      "name": "1.3- TRANG BỊ ĐIỆN ĐỘNG CƠ",
+      "items": [
+        {
+          "name": "Máy khởi động",
+          "quantity": "1b"
+        },
+        {
+          "name": "Bạc thau + than KĐ",
+          "quantity": "2b"
+        },
+        {
+          "name": "Đầu nê khởi động",
+          "quantity": "1"
+        },
+        {
+          "name": "Bánh răng khởi động",
+          "quantity": "1"
+        },
+        {
+          "name": "Rờ le khởi động",
+          "quantity": "1"
+        },
+        {
+          "name": "Than khởi động",
+          "quantity": "1b"
+        },
+        {
+          "name": "Cảm biến tO nước",
+          "quantity": "1"
+        },
+        {
+          "name": "AS nhớt",
+          "quantity": "1"
+        }
+      ]
+    },
+    {
+      "name": "2- HỆ THỐNG ĐIỆN",
+      "items": [
+        {
+          "name": "Máy phát điện 24v...",
+          "quantity": "1b"
+        },
+        {
+          "name": "Puly máy phát",
+          "quantity": "1"
+        },
+        {
+          "name": "Bi máy phát 180603",
+          "quantity": "1"
+        },
+        {
+          "name": "Bi máy phát 180502",
+          "quantity": "1"
+        },
+        {
+          "name": "Than máy phát",
+          "quantity": "2"
+        },
+        {
+          "name": "Vỉ tiết chế",
+          "quantity": "1"
+        },
+        {
+          "name": "Tiết chế",
+          "quantity": "1"
+        },
+        {
+          "name": "Rờ le đề phụ",
+          "quantity": "1"
+        },
+        {
+          "name": "Bình điện",
+          "quantity": "2"
+        },
+        {
+          "name": "Cọc bình điện",
+          "quantity": "2"
+        },
+        {
+          "name": "Cáp mát",
+          "quantity": "1"
+        },
+        {
+          "name": "Cáp lửa",
+          "quantity": "1"
+        },
+        {
+          "name": "Đồng hồ điện",
+          "quantity": "1"
+        },
+        {
+          "name": "Đồng hồ AS nhớt",
+          "quantity": "1"
+        },
+        {
+          "name": "tO nước",
+          "quantity": "1"
+        },
+        {
+          "name": "hơi",
+          "quantity": "1"
+        },
+        {
+          "name": "nhiên liệu",
+          "quantity": "1"
+        },
+        {
+          "name": "tốc độ máy",
+          "quantity": "1"
+        },
+        {
+          "name": "tốc độ xe",
+          "quantity": "1"
+        },
+        {
+          "name": "Bộ điện báo tốc độ",
+          "quantity": "1"
+        },
+        {
+          "name": "Đuôi đèn đồng hồ",
+          "quantity": "5"
+        },
+        {
+          "name": "Tay gạt xi nhan, đèn TH",
+          "quantity": "1"
+        },
+        {
+          "name": "Tay gạt mưa TH",
+          "quantity": "1"
+        },
+        {
+          "name": "Công tắc điện",
+          "quantity": "1"
+        },
+        {
+          "name": "đèn trần",
+          "quantity": "3"
+        },
+        {
+          "name": "đèn rọi",
+          "quantity": "1"
+        },
+        {
+          "name": "đèn mui",
+          "quantity": "1"
+        },
+        {
+          "name": "A(2nấc,3nấc)",
+          "quantity": "1"
+        },
+        {
+          "name": "cúp bình",
+          "quantity": "1"
+        },
+        {
+          "name": "Rờ le cúp bình",
+          "quantity": "1"
+        },
+        {
+          "name": "Buton nhấn còi",
+          "quantity": "1"
+        },
+        {
+          "name": "Còi điện",
+          "quantity": "1"
+        },
+        {
+          "name": "Còi hơi + Đạp còi hơi",
+          "quantity": "1+1"
+        },
+        {
+          "name": "Rờ le còi hơi",
+          "quantity": "1"
+        },
+        {
+          "name": "Máy gạt mưa",
+          "quantity": "1"
+        },
+        {
+          "name": "Cần gạt mưa",
+          "quantity": "3"
+        },
+        {
+          "name": "Chổi gạt mưa",
+          "quantity": "3"
+        },
+        {
+          "name": "Đèn pha",
+          "quantity": "2b"
+        },
+        {
+          "name": "Chóa đèn pha",
+          "quantity": "2"
+        },
+        {
+          "name": "Vành đèn pha",
+          "quantity": "2"
+        },
+        {
+          "name": "Bóng đèn pha",
+          "quantity": "2"
+        },
+        {
+          "name": "Đèn hiệu trước",
+          "quantity": "2"
+        },
+        {
+          "name": "Đèn hiệu sau",
+          "quantity": "2"
+        },
+        {
+          "name": "kích thước(xynhan)",
+          "quantity": "2"
+        },
+        {
+          "name": "Đèn cản vuông",
+          "quantity": "2"
+        },
+        {
+          "name": "đèn trần",
+          "quantity": "1"
+        },
+        {
+          "name": "đèn mui",
+          "quantity": "2"
+        },
+        {
+          "name": "biển số",
+          "quantity": "1"
+        },
+        {
+          "name": "hông ( LED)",
+          "quantity": "6"
+        },
+        {
+          "name": "sau thùng tròn",
+          "quantity": "2"
+        },
+        {
+          "name": "Cục chớp",
+          "quantity": "1"
+        },
+        {
+          "name": "stop hơi",
+          "quantity": "1"
+        },
+        {
+          "name": "Vú báo de+ Còi báo de",
+          "quantity": "1+1"
+        },
+        {
+          "name": "gài cầu",
+          "quantity": "1"
+        },
+        {
+          "name": "đèn AS nhớt",
+          "quantity": "1"
+        },
+        {
+          "name": "Bộ dây điện",
+          "quantity": "1b"
+        },
+        {
+          "name": "Bơm +béc + bầu nước",
+          "quantity": "1b"
+        }
+      ]
+    },
+    {
+      "name": "3- HỆ THỐNG LÁI",
+      "items": [
+        {
+          "name": "Vành TL (nhấn còi……",
+          "quantity": "1b"
+        },
+        {
+          "name": "Ống + bi ống tay lái",
+          "quantity": "1b"
+        },
+        {
+          "name": "Trục tay lái",
+          "quantity": "1"
+        },
+        {
+          "name": "Hộp cơ cấu lái",
+          "quantity": "1b"
+        },
+        {
+          "name": "Trục rẻ quạt (C/ngang",
+          "quantity": "1"
+        },
+        {
+          "name": "Bạc trục rẻ quạt ………",
+          "quantity": "1b"
+        },
+        {
+          "name": "Trục vít",
+          "quantity": "1"
+        },
+        {
+          "name": "Piston thanh răng",
+          "quantity": "1"
+        },
+        {
+          "name": "Vòng găng HTL",
+          "quantity": "1b"
+        },
+        {
+          "name": "Bi đầu trục vít …………",
+          "quantity": "2"
+        },
+        {
+          "name": "Bơm trợ lực lái",
+          "quantity": "1b"
+        },
+        {
+          "name": "Bánh răng dẫn động",
+          "quantity": "1b"
+        },
+        {
+          "name": "Bộ ruột bơm TL lái",
+          "quantity": "1"
+        },
+        {
+          "name": "Bi bơm TL lái",
+          "quantity": "2"
+        },
+        {
+          "name": "Bình dầu bơm TL lái",
+          "quantity": "1"
+        },
+        {
+          "name": "Van chia dầu lái",
+          "quantity": "1"
+        },
+        {
+          "name": "Khớp nối trục tay lái",
+          "quantity": "1"
+        },
+        {
+          "name": "Đòn quay đứng",
+          "quantity": "1"
+        },
+        {
+          "name": "ThanhCH ngang+dọc",
+          "quantity": "2"
+        },
+        {
+          "name": "Rô tuyn CH ngang",
+          "quantity": "2"
+        },
+        {
+          "name": "Rô tuyn CH dọc",
+          "quantity": "2"
+        },
+        {
+          "name": "Két mát nhớt lái",
+          "quantity": "1"
+        },
+        {
+          "name": "Ống dầu lái",
+          "quantity": "1b"
+        }
+      ]
+    },
+    {
+      "name": "4- HỆ THỐNG PHANH",
+      "items": [
+        {
+          "name": "Cụm bàn đạp",
+          "quantity": "1b"
+        },
+        {
+          "name": "Tổng phanh 2 tầng",
+          "quantity": "1"
+        },
+        {
+          "name": "Bầu phanh phụ sau",
+          "quantity": "2"
+        },
+        {
+          "name": "Bầu phanh phụ trước",
+          "quantity": "2"
+        },
+        {
+          "name": "Giá bầu phanh phụ",
+          "quantity": "4"
+        },
+        {
+          "name": "Cam phanh",
+          "quantity": "4"
+        },
+        {
+          "name": "Giá đỡ cam phanh",
+          "quantity": "4"
+        },
+        {
+          "name": "Rẻ quạt",
+          "quantity": "4"
+        },
+        {
+          "name": "Bầu hơi",
+          "quantity": "5"
+        },
+        {
+          "name": "Van an toàn",
+          "quantity": "1"
+        },
+        {
+          "name": "Van xả",
+          "quantity": "5"
+        },
+        {
+          "name": "Tang trống bánh xe",
+          "quantity": "4"
+        },
+        {
+          "name": "Tấm che tang trống",
+          "quantity": "4"
+        },
+        {
+          "name": "Guốc phanh chân",
+          "quantity": "6"
+        },
+        {
+          "name": "Lò xo guốc phanh",
+          "quantity": "4"
+        },
+        {
+          "name": "Tấm dừng bánh xe",
+          "quantity": "4"
+        },
+        {
+          "name": "Đường ống phanh",
+          "quantity": "1b"
+        },
+        {
+          "name": "Bộ điều hòa lực phanh",
+          "quantity": "1"
+        },
+        {
+          "name": "Chia hơi 5 ngã",
+          "quantity": "1"
+        },
+        {
+          "name": "VanĐ/khiển phanh tay",
+          "quantity": "1b"
+        },
+        {
+          "name": "Bộ làm mát hơi",
+          "quantity": "1"
+        },
+        {
+          "name": "Van chia hơi 2 tầng",
+          "quantity": "1"
+        },
+        {
+          "name": "Xy lanh hơi tắt máy",
+          "quantity": "2"
+        },
+        {
+          "name": "Cục đạp tắt máy",
+          "quantity": "1"
+        }
+      ]
+    },
+    {
+      "name": "5-DẪN ĐỘNG LY HỢP",
+      "items": [
+        {
+          "name": "Cụm bàn đạp",
+          "quantity": "1b"
+        },
+        {
+          "name": "Bi tê",
+          "quantity": "1"
+        },
+        {
+          "name": "Ổ trượt bi tê",
+          "quantity": "1"
+        },
+        {
+          "name": "Càng ngắt ly hợp",
+          "quantity": "1"
+        },
+        {
+          "name": "Bơm ly hợp + Bình dầu",
+          "quantity": "1+1"
+        },
+        {
+          "name": "Bộ trợ lực hơi ly hợp",
+          "quantity": "1"
+        }
+      ]
+    },
+    {
+      "name": "6.1- HỘP SỐ CHÍNH",
+      "items": [
+        {
+          "name": "Cần số chính",
+          "quantity": "1"
+        },
+        {
+          "name": "Công tắc gài nhanh chậm",
+          "quantity": "1b"
+        },
+        {
+          "name": "Rô tuyn gài số",
+          "quantity": "4"
+        },
+        {
+          "name": "Loa kèn",
+          "quantity": "1"
+        },
+        {
+          "name": "Đầu nối láp (đầu sáp",
+          "quantity": "1"
+        },
+        {
+          "name": "Nắp hộp số",
+          "quantity": "1"
+        },
+        {
+          "name": "Trục + Càng sang số",
+          "quantity": "3b"
+        },
+        {
+          "name": "Trục sơ cấp",
+          "quantity": "1"
+        },
+        {
+          "name": "Bộ đồng tốc 2 – 3",
+          "quantity": "1"
+        },
+        {
+          "name": "Bộ đồng tốc 4 – 5",
+          "quantity": "1"
+        },
+        {
+          "name": "Trục thứ cấp",
+          "quantity": "1"
+        },
+        {
+          "name": "Bánh răng",
+          "quantity": "1"
+        },
+        {
+          "name": "Trục trung gian",
+          "quantity": "1"
+        },
+        {
+          "name": "Bánh răng",
+          "quantity": "1"
+        },
+        {
+          "name": "Trục số de",
+          "quantity": "1"
+        },
+        {
+          "name": "Bánh răng số de",
+          "quantity": "1"
+        },
+        {
+          "name": "Bi ống rô lê",
+          "quantity": "1"
+        },
+        {
+          "name": "Bi số de",
+          "quantity": "2"
+        },
+        {
+          "name": "Vòng bi 292213",
+          "quantity": "1"
+        },
+        {
+          "name": "Vòng bi",
+          "quantity": "1"
+        },
+        {
+          "name": "Vòng bi",
+          "quantity": "1"
+        },
+        {
+          "name": "Bộ căn phe",
+          "quantity": "1b"
+        }
+      ]
+    },
+    {
+      "name": "HỘP SỐ PHỤ",
+      "items": [
+        {
+          "name": "Vỏ hộp số",
+          "quantity": "1"
+        },
+        {
+          "name": "Nắp hộp số",
+          "quantity": "11"
+        },
+        {
+          "name": "Trục+ càng gài C - S",
+          "quantity": "2b"
+        },
+        {
+          "name": "Trục sơ cấp",
+          "quantity": "1"
+        },
+        {
+          "name": "B/răng số 1, 2 TSC",
+          "quantity": "1"
+        },
+        {
+          "name": "Trục trung gian",
+          "quantity": "1"
+        },
+        {
+          "name": "B/răng số 1,2TTG",
+          "quantity": "1"
+        },
+        {
+          "name": "Trục thứ cấp (ra sau)",
+          "quantity": "1"
+        },
+        {
+          "name": "B/răng trục thứ cấp",
+          "quantity": "1"
+        },
+        {
+          "name": "Trục ra cầu trước",
+          "quantity": "1"
+        },
+        {
+          "name": "B/răng trục ra cầu T",
+          "quantity": "1"
+        },
+        {
+          "name": "Đầu sáp trục SC-T-S",
+          "quantity": "3"
+        },
+        {
+          "name": "Bánh+ trục vít tốc độ",
+          "quantity": "1b"
+        },
+        {
+          "name": "Bộ căn phe",
+          "quantity": "1"
+        }
+      ]
+    },
+    {
+      "name": "7.1-CARDAN CHÍNH",
+      "items": [
+        {
+          "name": "Đầu then trong",
+          "quantity": "1"
+        },
+        {
+          "name": "Đầu then ngoài",
+          "quantity": "1"
+        },
+        {
+          "name": "Chữ thập đồng bộ",
+          "quantity": "2"
+        },
+        {
+          "name": "Chạc trục truyền CD",
+          "quantity": "2"
+        },
+        {
+          "name": "Nắp che bụi thân CD",
+          "quantity": "1"
+        }
+      ]
+    },
+    {
+      "name": "7.2-CARDAN TRƯỚC",
+      "items": [
+        {
+          "name": "Đầu then trong",
+          "quantity": "1"
+        },
+        {
+          "name": "Đầu then ngoài",
+          "quantity": "1"
+        },
+        {
+          "name": "Chữ thập đồng bộ",
+          "quantity": "2"
+        },
+        {
+          "name": "Chạc trục truyền CD",
+          "quantity": "2"
+        },
+        {
+          "name": "Nắp che bụi thân CD",
+          "quantity": "1"
+        }
+      ]
+    },
+    {
+      "name": "7.3-CARDAN SAU",
+      "items": [
+        {
+          "name": "Đầu then trong",
+          "quantity": "1"
+        },
+        {
+          "name": "Đầu then ngoài",
+          "quantity": "1"
+        },
+        {
+          "name": "Chữ thập đồng bộ",
+          "quantity": "2"
+        },
+        {
+          "name": "Chạc trục truyền CD",
+          "quantity": "2"
+        },
+        {
+          "name": "Nắp che bụi thân CD",
+          "quantity": "1"
+        }
+      ]
+    },
+    {
+      "name": "8- CẦU TRƯỚC",
+      "items": [
+        {
+          "name": "Vỏ cầu",
+          "quantity": "1b"
+        },
+        {
+          "name": "Vỏ khớp quay CH",
+          "quantity": "2"
+        },
+        {
+          "name": "Loa kèn đầu cầu",
+          "quantity": "2"
+        },
+        {
+          "name": "Bi trục đứng (27709)",
+          "quantity": "4"
+        },
+        {
+          "name": "Ba ngang (bàn tay ếch",
+          "quantity": "2"
+        },
+        {
+          "name": "Bộ vi sai",
+          "quantity": "1"
+        },
+        {
+          "name": "Bánh răng vành chậu",
+          "quantity": "1"
+        },
+        {
+          "name": "Bánh răng côn xoắn",
+          "quantity": "1"
+        },
+        {
+          "name": "Bán trục (láp ngang)",
+          "quantity": "2"
+        },
+        {
+          "name": "Đầu nối láp (Đ/sáp)",
+          "quantity": "1"
+        },
+        {
+          "name": "Vòng bi trục mayơ",
+          "quantity": "4"
+        },
+        {
+          "name": "Vòng bi",
+          "quantity": "1"
+        },
+        {
+          "name": "Vòng bi",
+          "quantity": "1"
+        },
+        {
+          "name": "Vòng bi",
+          "quantity": "1"
+        },
+        {
+          "name": "Mâyơ bánh xe",
+          "quantity": "2"
+        },
+        {
+          "name": "Gujông,Đ/ốc,móngT/kê",
+          "quantity": "12"
+        }
+      ]
+    },
+    {
+      "name": "9- CẦU SAU",
+      "items": [
+        {
+          "name": "Bộ vi sai",
+          "quantity": "1"
+        },
+        {
+          "name": "Bánh răng vành chậu",
+          "quantity": "1"
+        },
+        {
+          "name": "Bánh răng côn xoắn",
+          "quantity": "1"
+        },
+        {
+          "name": "Bán trục (láp ngang)",
+          "quantity": "2"
+        },
+        {
+          "name": "Đầu nối láp (Đ/sáp)",
+          "quantity": "1"
+        },
+        {
+          "name": "Vòng bi trục mayơ",
+          "quantity": "4"
+        },
+        {
+          "name": "May ơ bánh xe",
+          "quantity": "2"
+        }
+      ]
+    },
+    {
+      "name": "10- HỆ THỐNG TREO",
+      "items": [
+        {
+          "name": "Ống giảm xóc",
+          "quantity": "4"
+        },
+        {
+          "name": "Ắc + bạc nhíp trước",
+          "quantity": "2b"
+        },
+        {
+          "name": "Ắc + bạc nhíp sau",
+          "quantity": "2b"
+        },
+        {
+          "name": "Bát trượt nhíp trước",
+          "quantity": "2"
+        },
+        {
+          "name": "Bát trượt nhíp sau",
+          "quantity": "2"
+        },
+        {
+          "name": "U quang nhíp trước",
+          "quantity": "4"
+        },
+        {
+          "name": "U quang nhíp sau",
+          "quantity": "4"
+        },
+        {
+          "name": "Thanh giằng dọc sau",
+          "quantity": "2"
+        },
+        {
+          "name": "Thanh giằng ngang sau",
+          "quantity": "1"
+        },
+        {
+          "name": "Nhíp trước lá",
+          "quantity": "2b"
+        },
+        {
+          "name": "Nhíp sau lá",
+          "quantity": "2b"
+        }
+      ]
+    },
+    {
+      "name": "11- THÙNG XE",
+      "items": [
+        {
+          "name": "Sàn thùng",
+          "quantity": "1"
+        },
+        {
+          "name": "Thành đầu +Thành hông",
+          "quantity": "1+2"
+        },
+        {
+          "name": "Bửng hậu",
+          "quantity": "1"
+        },
+        {
+          "name": "Bộ gài bửng hậu",
+          "quantity": "2b"
+        },
+        {
+          "name": "Sắt chắn bùn+chống",
+          "quantity": "4b"
+        }
+      ]
+    },
+    {
+      "name": "12- KHUNG XE",
+      "items": [
+        {
+          "name": "Biển số",
+          "quantity": "2"
+        },
+        {
+          "name": "Cản trước",
+          "quantity": "1b"
+        },
+        {
+          "name": "Móc kéo trước",
+          "quantity": "1"
+        },
+        {
+          "name": "Đà dọc + ngang",
+          "quantity": "2+1"
+        },
+        {
+          "name": "Cản sau",
+          "quantity": "2"
+        },
+        {
+          "name": "Móc hậu",
+          "quantity": "1"
+        }
+      ]
+    },
+    {
+      "name": "13- NỘI THẤT",
+      "items": [
+        {
+          "name": "La phông",
+          "quantity": "1"
+        },
+        {
+          "name": "Tấm trải sàn (táp bi)",
+          "quantity": "1"
+        },
+        {
+          "name": "Che nắng",
+          "quantity": "3"
+        },
+        {
+          "name": "Bộ đệm ghế ngồi",
+          "quantity": "3b"
+        },
+        {
+          "name": "Khung ghế ngồi",
+          "quantity": "3b"
+        },
+        {
+          "name": "Bộ giảm xóc ghế",
+          "quantity": "2b"
+        }
+      ]
+    },
+    {
+      "name": "14- HỆ THỐNG HƠI",
+      "items": [
+        {
+          "name": "Bộ điều tiếu hơi",
+          "quantity": "1"
+        },
+        {
+          "name": "Bộ chia hơi phanh",
+          "quantity": "2"
+        },
+        {
+          "name": "Chia hơi 3 ngã",
+          "quantity": "1"
+        }
+      ]
+    },
+    {
+      "name": "15- CA BIN",
+      "items": [
+        {
+          "name": "Kính chắn gió",
+          "quantity": "2"
+        },
+        {
+          "name": "Kính sau cabin",
+          "quantity": "1"
+        },
+        {
+          "name": "Kính chiếu hậu",
+          "quantity": "2"
+        },
+        {
+          "name": "Tay kính chiếu hậu",
+          "quantity": "2"
+        },
+        {
+          "name": "Mặt nạ",
+          "quantity": "1b"
+        },
+        {
+          "name": "Ốp nhựa mui cabin",
+          "quantity": "1b"
+        },
+        {
+          "name": "Chữ KAMAZ + nhãn",
+          "quantity": "1b"
+        },
+        {
+          "name": "Nhíp cabin (5 lá)",
+          "quantity": "2b"
+        },
+        {
+          "name": "Ống giảm xóc cabin",
+          "quantity": "2"
+        },
+        {
+          "name": "Chống cabin",
+          "quantity": "1b"
+        },
+        {
+          "name": "Cơ cấu gài cabin",
+          "quantity": "1b"
+        },
+        {
+          "name": "Cửa hông",
+          "quantity": "2"
+        },
+        {
+          "name": "Tấm che cửa hông",
+          "quantity": "2"
+        },
+        {
+          "name": "Kính cửa hông",
+          "quantity": "2"
+        },
+        {
+          "name": "Kính lấy gió",
+          "quantity": "2"
+        },
+        {
+          "name": "Khóa gài kính gió",
+          "quantity": "2"
+        },
+        {
+          "name": "Ổ khóa cửa",
+          "quantity": "2"
+        },
+        {
+          "name": "Tay mở cửa trong",
+          "quantity": "2"
+        },
+        {
+          "name": "Tay mở cửa ngoài",
+          "quantity": "2"
+        },
+        {
+          "name": "Ổ quay kính",
+          "quantity": "2b"
+        },
+        {
+          "name": "Tay quay kính",
+          "quantity": "2"
+        },
+        {
+          "name": "Hộc tài liệu + nắp",
+          "quantity": "1b"
+        },
+        {
+          "name": "Ống lấygió hướng lên",
+          "quantity": "1b"
+        },
+        {
+          "name": "Bậc lên xuống",
+          "quantity": "1"
+        },
+        {
+          "name": "Bát lên bậc lên xuống",
+          "quantity": "2"
+        },
+        {
+          "name": "Tay nắm lên cabin",
+          "quantity": "2"
+        },
+        {
+          "name": "Giá bắt bình cứu hỏa",
+          "quantity": "1"
+        },
+        {
+          "name": "Dây tắt máy",
+          "quantity": "1"
+        },
+        {
+          "name": "Bầu lọc gió",
+          "quantity": "1"
+        },
+        {
+          "name": "Ruột lọc gió",
+          "quantity": "1"
+        },
+        {
+          "name": "Lọc nhiên liệu sơ cấp",
+          "quantity": "1"
+        },
+        {
+          "name": "Ruột lọc N/liệu SC",
+          "quantity": "1"
+        },
+        {
+          "name": "Thùng nhiên liệu",
+          "quantity": "1"
+        },
+        {
+          "name": "Nắp thùng nhiên liệu",
+          "quantity": "1"
+        },
+        {
+          "name": "Ống đổ thùng N/liệu",
+          "quantity": "1"
+        },
+        {
+          "name": "Phao N/liệu",
+          "quantity": "1b"
+        },
+        {
+          "name": "Giá thùng NL + đai",
+          "quantity": "1b"
+        },
+        {
+          "name": "Thùng dụng cụ",
+          "quantity": "1"
+        },
+        {
+          "name": "Thùng B/điện + nắp",
+          "quantity": "1b"
+        },
+        {
+          "name": "Giá bắt bầu hơi",
+          "quantity": "1b"
+        },
+        {
+          "name": "Đai bắt bầu hơi",
+          "quantity": "1b"
+        },
+        {
+          "name": "Bầu giảm thanh",
+          "quantity": "1"
+        },
+        {
+          "name": "Bộ ống bô xả + ống mềm",
+          "quantity": "1+2"
+        },
+        {
+          "name": "Giá lốp dự phòng",
+          "quantity": "1b"
+        },
+        {
+          "name": "Bánh xe dự phòng",
+          "quantity": "1b"
+        },
+        {
+          "name": "Vỏ ruột bánh xe",
+          "quantity": "6b"
+        },
+        {
+          "name": "Dây đai an toàn",
+          "quantity": "3b"
+        },
+        {
+          "name": "Két làm mát tuộc bô",
+          "quantity": "1"
+        },
+        {
+          "name": "Bầu nướ phụ",
+          "quantity": "1"
+        }
+      ]
+    },
+    {
+      "name": "17- HỆ THỐNG LẠNH",
+      "items": [
+        {
+          "name": "Máy nén",
+          "quantity": "1"
+        },
+        {
+          "name": "Két dàn nóng",
+          "quantity": "1"
+        },
+        {
+          "name": "Công tắc AC",
+          "quantity": "1"
+        },
+        {
+          "name": "Ống dàn lạnh",
+          "quantity": "4"
+        },
+        {
+          "name": "Ống thổi gió dàn lạnh",
+          "quantity": "5"
+        },
+        {
+          "name": "Rờ le",
+          "quantity": "2"
+        },
+        {
+          "name": "Van tiết lưu",
+          "quantity": "1"
+        },
+        {
+          "name": "Timer start",
+          "quantity": "1"
+        },
+        {
+          "name": "Quạt dàn nóng",
+          "quantity": "1"
+        },
+        {
+          "name": "Phin + lọc ga",
+          "quantity": "1b"
+        },
+        {
+          "name": "Kim vòi",
+          "quantity": "2"
+        },
+        {
+          "name": "Cảm biến gas",
+          "quantity": "1"
+        }
+      ]
+    },
+    {
+      "name": "16- TRANG BỊ KHÁC",
+      "items": [
+        {
+          "name": "Két nước",
+          "quantity": "1"
+        },
+        {
+          "name": "Nắp két nước",
+          "quantity": "1"
+        },
+        {
+          "name": "Két mát nhớt máy",
+          "quantity": "1"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,410 @@
+const fs = require('fs');
+const path = require('path');
+
+const data = {
+  templateVersion: 1,
+  vehicleCode: "ME-SELECT",
+  vehicleName: "Mazda E2000",
+  protocolType: "KIEM_CHON",
+  sections: [
+    {
+      name: "1- ĐỘNG CƠ .....RZ",
+      items: [
+        { name: "1.1. Trang bị đồng bộ", quantity: "" },
+        { name: "-Bộ điều khiển ga", quantity: "1b" },
+        { name: "Cụm ống xả", quantity: "1" },
+        { name: "-Tấm che ống xả", quantity: "1" },
+        { name: "Cụm ống hút", quantity: "1" },
+        { name: "Nắp đậy BR cam cơ", quantity: "2" },
+        { name: "Nắp đậy dàn cò mổ :", quantity: "1" },
+        { name: "-Nắp đổ nhớt", quantity: "1" },
+        { name: "Thước đo nhớt", quantity: "1" },
+        { name: "Lọc nhớt", quantity: "1" },
+        { name: "Cánh quạt", quantity: "1" },
+        { name: "Bát bắt máy phát+tăngđưa", quantity: "1" },
+        { name: "Puly trục cơ", quantity: "1" },
+        { name: "Puly bơm nước", quantity: "1" },
+        { name: "Khóa xả nước", quantity: "1" },
+        { name: "Cạc te động cơ", quantity: "1" },
+        { name: "Tấm dừng bánh đà", quantity: "1" },
+        { name: "Chân máy", quantity: "2" },
+        { name: "Thanh chống chân máy", quantity: "1" },
+        { name: "1.2. Cụm – chi tiết", quantity: "" },
+        { name: "Bơm nước", quantity: "1b" },
+        { name: "Bơm nhớt", quantity: "1b" },
+        { name: "Bộ ly hợp", quantity: "1b" },
+        { name: "-Đĩa ma sát ly hợp", quantity: "1" },
+        { name: "Bánh đà + vành răng", quantity: "1b" },
+        { name: "Nắp máy", quantity: "1b" },
+        { name: "-Xu páp xả + hút", quantity: "8" },
+        { name: "-Miệng xie XP xả + hút", quantity: "8" },
+        { name: "-Ống dẫn hướng XP", quantity: "8" },
+        { name: "-Lò xo xu páp + đế LX", quantity: "8b" },
+        { name: "-Chén chặn xu páp", quantity: "8" },
+        { name: "-Móng hãm xu páp", quantity: "16" },
+        { name: "-Con đội", quantity: "8" },
+        { name: "Cảm biến tO nước........", quantity: "1" },
+        { name: "------- AS nhớt .............", quantity: "1" },
+        { name: "Trục cam (cote :..........", quantity: "1b" },
+        { name: "-Xích kéo trục cam", quantity: "1" },
+        { name: "-Bánh xích cam - cơ", quantity: "1" },
+        { name: "Trục cơ (cote :.............", quantity: "1" },
+        { name: "-Þ cổ chính :", quantity: "1b" },
+        { name: "-Þ cổ biên :", quantity: "" },
+        { name: "-Bạc cổ chính + biên", quantity: "2b" },
+        { name: "-Đệm dọc trục", quantity: "4" },
+        { name: "-Vòng bi trục cơ .........", quantity: "1" },
+        { name: "Piston (cote :..............", quantity: "4" },
+        { name: "-Chốt piston", quantity: "4" },
+        { name: "-Phe gài chốt", quantity: "4" },
+        { name: "Vòng găng", quantity: "4b" },
+        { name: "Tay biên :", quantity: "4" },
+        { name: "-Bạc thau tay biên", quantity: "4" },
+        { name: "Xilanh ( cote :.............", quantity: "4" },
+        { name: "Thân máy", quantity: "1" },
+        { name: "Đội căng xích", quantity: "1b" },
+        { name: "Guốc căng xích", quantity: "2" },
+        { name: "Bộ chế hòa khí", quantity: "1b" },
+        { name: "Bộ Đ/khiển ga", quantity: "1b" },
+        { name: "Ống + rắc co CHK", quantity: "1b" },
+        { name: "Ống CHK, BCĐ", quantity: "1b" },
+        { name: "Bơm xăng", quantity: "1b" },
+        { name: "Cốc lọc xăng tinh", quantity: "1b" },
+        { name: "Bộ chia điện tích hợp", quantity: "1b" },
+        { name: "Nến điện", quantity: "4" },
+        { name: "Dây phin", quantity: "4" },
+        { name: "Chụp nến điện", quantity: "4" },
+        { name: "*- CHI TIẾT LẺ ĐỘNG CƠ :", quantity: "" },
+        { name: "Bulon, Jujông, đai ốc, long đền, vòng kẹp, chi tiết khác", quantity: "" }
+      ]
+    },
+    {
+      name: "2.2-HỆ THỐNG ĐIỆN",
+      items: [
+        { name: "Máy khởi động", quantity: "1" },
+        { name: "-Bạc thau + than KĐ", quantity: "2b" },
+        { name: "-Đầu nê khởi động", quantity: "1" },
+        { name: "-Bánh răng khởi động", quantity: "1" },
+        { name: "-Rờ le khởi động", quantity: "1" },
+        { name: "Máy phát điện", quantity: "1b" },
+        { name: "-Puly máy phát", quantity: "1" },
+        { name: "-Bi MP ........................", quantity: "2" },
+        { name: "-Than máy phát", quantity: "1b" },
+        { name: "-Vỉ tiết chế", quantity: "1" },
+        { name: "Rờ le đề phụ", quantity: "1" },
+        { name: "Bình điện 12v..............", quantity: "1" },
+        { name: "-Cọc bình điện", quantity: "2" },
+        { name: "-Cáp mát ( - )", quantity: "1" },
+        { name: "-Cáp lửa ( + )", quantity: "1" },
+        { name: "Đồng hồ điện báo đèn", quantity: "1" },
+        { name: "------ AS nhớt báo đèn", quantity: "1" },
+        { name: "---------- tO nước", quantity: "1" },
+        { name: "---------- nhiên liệu", quantity: "1" },
+        { name: "---------- tốc độ", quantity: "1" },
+        { name: "Cụm báo tốc độ ( điện )", quantity: "1" },
+        { name: "Cảm biến t0 nước", quantity: "1" },
+        { name: "Cảm biến AS nhớt", quantity: "1" },
+        { name: "Bóng đèn đồng hồ", quantity: "1b" },
+        { name: "Tay gạt xi nhan + pha cốt", quantity: "1" },
+        { name: "Tay gạt mưa + rửa kính", quantity: "1" },
+        { name: "Công tắc điện", quantity: "1" },
+        { name: "--------- đèn trung tâm", quantity: "1" },
+        { name: "--------- đèn pha chính", quantity: "1" },
+        { name: "Buton nhấn còi", quantity: "1" },
+        { name: "Còi điện", quantity: "2" },
+        { name: "Máy gạt mưa trước + sau", quantity: "1+1" },
+        { name: "-Bộ thanh chuyền", quantity: "1b" },
+        { name: "-Cần gạt mưa trước + sau", quantity: "2+1" },
+        { name: "-Chổi gạt mưa trước + sau", quantity: "2+1" },
+        { name: "Bộ rửa kính", quantity: "1" },
+        { name: "-Bầu nước + đường ống", quantity: "1b" },
+        { name: "-Bơm + béc phun", quantity: "1+3" },
+        { name: "Đèn pha", quantity: "2" },
+        { name: "----- hiệu trước + đèn cản", quantity: "2+2" },
+        { name: "----- hiệu sau", quantity: "2" },
+        { name: "----- số de", quantity: "1" },
+        { name: "----- soi biển số", quantity: "2" },
+        { name: "----- khoang xe + lái", quantity: "2+1" },
+        { name: "----- bậc cửa tài xế", quantity: "1" },
+        { name: "----- bậc cửa hông", quantity: "1" },
+        { name: "Cầu chì các loại", quantity: "1b" },
+        { name: "Bộ dây điện", quantity: "1b" },
+        { name: "Công tắc hành trình", quantity: "3" },
+        { name: "Cục chớp", quantity: "1" },
+        { name: "Cục Stop", quantity: "1" },
+        { name: "Cục báo de", quantity: "1" },
+        { name: "Cục báo phanh tay", quantity: "1" },
+        { name: "Rơle (4 chân) (5 chân)", quantity: "" },
+        { name: "Bộ lock cửa ( điện )", quantity: "1b" }
+      ]
+    },
+    {
+      name: "3- HỆ THỐNG LÁI",
+      items: [
+        { name: "Vành tay lái", quantity: "" },
+        { name: "Chữ thập lái", quantity: "2" },
+        { name: "Rô tuyn chuyển hướng", quantity: "2+2" },
+        { name: "Rô tuyn trụ dưới", quantity: "2" },
+        { name: "Thanh chuyển hướng", quantity: "2" },
+        { name: "Cụm chữ A trên+rôtuyn", quantity: "2b" },
+        { name: "Chữ A trên", quantity: "2b" },
+        { name: "Bơm trợ lực lái", quantity: "1b" },
+        { name: "Bost tay lái + thước lái", quantity: "1b" },
+        { name: "Ống dầu lái", quantity: "2" },
+        { name: "Cao su ruột gà bost lái", quantity: "2" },
+        { name: "Thanh chữ a trên", quantity: "2b" },
+        { name: "Thanh chữ a dưới", quantity: "2b" },
+        { name: "Thanh ổn định ngang", quantity: "1" },
+        { name: "Thanh ổn định dọc", quantity: "2" },
+        { name: "Cao su chốn dập", quantity: "2" }
+      ]
+    },
+    {
+      name: "4- HỆ THỐNG PHANH",
+      items: [
+        { name: "Phanh chân", quantity: "" },
+        { name: "Bơm phanh cái", quantity: "1" },
+        { name: "-Lúp pê bơm phanh", quantity: "1" },
+        { name: "-Bầu chứa dầu phanh", quantity: "1" },
+        { name: "Bầu trợ lực", quantity: "1" },
+        { name: "-Van hơi hút 1 chiều", quantity: "1" },
+        { name: "Bơm phanh con sau", quantity: "2" },
+        { name: "Bơm phanh con trước", quantity: "2" },
+        { name: "Đĩa phanh trước", quantity: "2" },
+        { name: "Tang trống phanh S", quantity: "2" },
+        { name: "Guốc phanh T+S", quantity: "8" },
+        { name: "-Lò xo guốc phanh", quantity: "1b" },
+        { name: "Tấm dừng bánh xe", quantity: "4" },
+        { name: "-Đường ống phanh cao su", quantity: "" },
+        { name: "-Cụm chỉnh phanh", quantity: "2b" },
+        { name: "Phanh tay (vào B/sau)", quantity: "" },
+        { name: "Tay kéo phanh", quantity: "1" }
+      ]
+    },
+    {
+      name: "5-DẪN ĐỘNG LY HỢP",
+      items: [
+        { name: "Bơm ly hợp chính", quantity: "1" },
+        { name: "- Bầu chứa dầu", quantity: "1" },
+        { name: "Bơm ly hợp phụ", quantity: "1" },
+        { name: "Bi tê - Ổ trượt bi tê", quantity: "1" },
+        { name: "Ống dầu cao su ly hợp", quantity: "1" },
+        { name: "Càng ngắt ly hợp", quantity: "1" }
+      ]
+    },
+    {
+      name: "6- HỘP SỐ CHÍNH",
+      items: [
+        { name: "Cần số chính", quantity: "1" },
+        { name: "Vỏ + nắp hộp số", quantity: "2" },
+        { name: "Bộ đồng tốc 3/4", quantity: "1" },
+        { name: "Bộ đồng tốc 4/5", quantity: "1" },
+        { name: "-Vành thau đồng tốc", quantity: "" },
+        { name: "-Móng hãm", quantity: "" },
+        { name: "Trục thứ cấp", quantity: "1" },
+        { name: "B/răng 1, 2, 3 thứ cấp", quantity: "3" },
+        { name: "Trục trung gian", quantity: "1" },
+        { name: "B/răng 2, 3 trung gian", quantity: "2" },
+        { name: "Bánh răng thường tiếp", quantity: "1" },
+        { name: "Trục số de", quantity: "1" },
+        { name: "Bánh răng số de", quantity: "1" },
+        { name: "Bi rô lê", quantity: "1b" },
+        { name: "V/bi trục SC ................", quantity: "1" },
+        { name: "----- trục TC ................", quantity: "1" },
+        { name: "----- trục TC ..........", quantity: "1" },
+        { name: "----- trục TG ................", quantity: "1" },
+        { name: "Loa kèn", quantity: "1" },
+        { name: "Càng sang số", quantity: "" },
+        { name: "Trục càng sang số", quantity: "" },
+        { name: "Trục sơ cấp", quantity: "1" },
+        { name: "Bộ đồng tốc 1/2", quantity: "1" },
+        { name: "----- trục TG ................", quantity: "1" },
+        { name: "----- số de ...................", quantity: "1" },
+        { name: "Ổ bi kim BR1,2,3,5 TC", quantity: "4" },
+        { name: "Bộ căn phe", quantity: "1b" },
+        { name: "Rotuyn đi số", quantity: "" }
+      ]
+    },
+    {
+      name: "7- CARDAN",
+      items: [
+        { name: "Thân cardan liền", quantity: "1" },
+        { name: "Mặt bích", quantity: "2" },
+        { name: "Chữ thập đồng bộ", quantity: "2" },
+        { name: "Đầu sáp láp dọc", quantity: "1" }
+      ]
+    },
+    {
+      name: "8- DẦM CẦU TRƯỚC",
+      items: [
+        { name: "Vòng bi đùm ngoài", quantity: "1b" },
+        { name: "-----------đùm trong", quantity: "2" },
+        { name: "Mâm bánh xe", quantity: "2" },
+        { name: "May ơ bánh xe", quantity: "2" },
+        { name: "Jujông tắc kê", quantity: "12" },
+        { name: "Đai ốc tắc kê", quantity: "12" }
+      ]
+    },
+    {
+      name: "9- CẦU SAU",
+      items: [
+        { name: "Bán trục (láp ngang)", quantity: "2" },
+        { name: "Bộ vi sai", quantity: "1" },
+        { name: "Bánh răng vành chậu", quantity: "1" },
+        { name: "------------- côn xoắn", quantity: "1" },
+        { name: "Đầu nối cardan", quantity: "1" },
+        { name: "Vòng bi vi sai ..............", quantity: "2" },
+        { name: "-----------vi sai ..............", quantity: "2" },
+        { name: "--------- đùm .trái", quantity: "1" },
+        { name: "--------- đùm ..phải", quantity: "1" },
+        { name: "Mâm bánh xe", quantity: "2" },
+        { name: "May ơ bánh xe", quantity: "2" },
+        { name: "Jujông tắc kê", quantity: "12" },
+        { name: "Đai ốc tắc kê", quantity: "12" }
+      ]
+    },
+    {
+      name: "10- HỆ THỐNG TREO",
+      items: [
+        { name: "-Ống giảm xóc trước", quantity: "2" },
+        { name: "Ống giảm xóc sau", quantity: "2" },
+        { name: "-U quang nhíp sau", quantity: "4" },
+        { name: "Nhíp sau lá", quantity: "2b" },
+        { name: "Cao sau đầu nhíp", quantity: "2b" }
+      ]
+    },
+    {
+      name: "11- KHUNG XE",
+      items: [
+        { name: "Biển số", quantity: "2" },
+        { name: "Cản trước (nhựa)", quantity: "1b" },
+        { name: "-Bát móc kéo trước", quantity: "2" },
+        { name: "Cản sau", quantity: "1" },
+        { name: "-Vòng móc kéo sau", quantity: "1" }
+      ]
+    },
+    {
+      name: "12- NỘI THẤT",
+      items: [
+        { name: "La phông trần", quantity: "1b" },
+        { name: "Bọc thành trong + cửa", quantity: "1b" },
+        { name: "Tấm che nắng", quantity: "2" },
+        { name: "Bộ đệm ghế", quantity: "15" },
+        { name: "Khung ghế", quantity: "15" },
+        { name: "Táp bi trải sàn", quantity: "1b" }
+      ]
+    },
+    {
+      name: "13- TRANG BỊ ĐỒNG BỘ",
+      items: [
+        { name: "Két nước + nắp", quantity: "1b" },
+        { name: "Cao su ống nước trên dưới", quantity: "2b" },
+        { name: "-Bọc gió két nước", quantity: "1" },
+        { name: "Lọc gió", quantity: "1" },
+        { name: "-Cao su lọc gió", quantity: "1" },
+        { name: "-Ruột lọc gió", quantity: "1" },
+        { name: "Thùng nhiên liệu", quantity: "1" },
+        { name: "-Nắp thùng nhiên liệu", quantity: "1" },
+        { name: "-Phao xăng", quantity: "1b" },
+        { name: "Lọc nhiên liệu sơ cấp", quantity: "1" },
+        { name: "Bô giảm thanh", quantity: "1" },
+        { name: "-Bộ ống xả", quantity: "1b" },
+        { name: "Cao su chắn bùn T+ S", quantity: "4" },
+        { name: "Giá lốp dự phòng", quantity: "1b" },
+        { name: "-Lốp dự phòng ............", quantity: "1b" },
+        { name: "-Lốp bánh xe ..............", quantity: "4b" }
+      ]
+    },
+    {
+      name: "14- CA BIN, THÂN XE",
+      items: [
+        { name: "Kính chắn gió", quantity: "1" },
+        { name: "Kính chiếu hậu trong", quantity: "1" },
+        { name: "Kính chiếu hậu ngoài", quantity: "2" },
+        { name: "-Tay kính chiếu hậu N", quantity: "2" },
+        { name: "Mặt nạ", quantity: "1" },
+        { name: "Ca bô :", quantity: "1" },
+        { name: "-Khóa gài cabô", quantity: "1b" },
+        { name: "Bệ táp lô nhựa cabin", quantity: "1b" },
+        { name: "Cửa trước", quantity: "2" },
+        { name: "Tấm che trong cửa", quantity: "2" },
+        { name: "Cơ cấu khóa cửa", quantity: "2" },
+        { name: "-Tay mở cửa ngoài", quantity: "2" },
+        { name: "-Tay mở cửa trong", quantity: "2" },
+        { name: "-kính cửa hông", quantity: "2" },
+        { name: "Cơ cấu quay kính", quantity: "2" },
+        { name: "Tay quay kính", quantity: "2" },
+        { name: "Khóa kính lùa", quantity: "4" },
+        { name: "Cửa hông xe", quantity: "2b" },
+        { name: "-Cơ cấu khóa cửa hông", quantity: "2b" },
+        { name: "-Tay mở ngoài cửa hông", quantity: "2" },
+        { name: "-Tay mở trongcửa hông", quantity: "2" },
+        { name: "-Tay nắm trong cửa", quantity: "2" },
+        { name: "Ben hơi chống cửa sau", quantity: "2b" },
+        { name: "Cửa sau", quantity: "1" },
+        { name: "Ổ khóa", quantity: "1" },
+        { name: "Tay mở cửa ngoái", quantity: "1" },
+        { name: "Tay mở cửa trong", quantity: "1" },
+        { name: "Ổ khóa chìa", quantity: "" },
+        { name: "Chụp mâm bánh xe", quantity: "4" },
+        { name: "Dây đai an toàn", quantity: "2b" },
+        { name: "Cao su chân máy", quantity: "2" },
+        { name: "Cao su chân hộp số", quantity: "1" },
+        { name: "Ang ten", quantity: "1" },
+        { name: "Catsett", quantity: "1" }
+      ]
+    },
+    {
+      name: "15- HỆ THỐNG LẠNH",
+      items: [
+        { name: "Máy nén", quantity: "1" },
+        { name: "Két dàn nóng", quantity: "1" },
+        { name: "-Quạt dàn nóng", quantity: "" },
+        { name: "-Khung bảo vệ két DN", quantity: "1" },
+        { name: "Ong dàn lạnh", quantity: "4" },
+        { name: "Ong thổi gió dàn lạnh", quantity: "5" },
+        { name: "Rờ le nhiệt", quantity: "2" },
+        { name: "Van tiết lưu", quantity: "1" },
+        { name: "Timer start", quantity: "1" },
+        { name: "Kim vòi", quantity: "2" },
+        { name: "Phin + lọc ga", quantity: "1b" },
+        { name: "Dàn lạnh", quantity: "2" },
+        { name: "Cảm biến ga", quantity: "1" },
+        { name: "Cửa gió dàn lạnh", quantity: "" }
+      ]
+    },
+    {
+      name: "16- TRANG BỊ KHÁC",
+      items: [
+        { name: "Joang ống cánh cửa trước", quantity: "2" },
+        { name: "Joang ống cửa hông", quantity: "2" },
+        { name: "Joang ống cửa sau", quantity: "1" },
+        { name: "Joang ống viền dưới cửa", quantity: "2" },
+        { name: "Joang U cánh cửa", quantity: "2" },
+        { name: "Joang ống viền ca bô", quantity: "2" },
+        { name: "Joang U cánh cửa", quantity: "1" },
+        { name: "Joang ống ca bô", quantity: "2" },
+        { name: "Joang u quang kính", quantity: "2" },
+        { name: "Joang kính cố định", quantity: "2" },
+        { name: "Nẹp kính cửa trước", quantity: "2" },
+        { name: "Nhãn nhôm suất xưởng", quantity: "1b" },
+        { name: "*- CHI TIẾT LẺ PHẦN XE :", quantity: "" },
+        { name: "Bulon, Jujông, đai ốc, long đền, vòng kẹp, ống, rắc co, chi tiết khác", quantity: "" }
+      ]
+    }
+  ]
+};
+
+data.sections.forEach(section => {
+  section.items = section.items.filter(item => {
+    return item.name && item.name.trim() !== "" && /[a-zA-Z\u00C0-\u1EF9]/.test(item.name);
+  });
+});
+
+const dir = path.join('src', 'templates', 'selections');
+if (!fs.existsSync(dir)){
+    fs.mkdirSync(dir, { recursive: true });
+}
+
+fs.writeFileSync(path.join(dir, 'MazdaE2000Selection.json'), JSON.stringify(data, null, 2), 'utf-8');
+console.log('Mazda E2000 Selection items:', data.sections.reduce((acc, sec) => acc + sec.items.length, 0));

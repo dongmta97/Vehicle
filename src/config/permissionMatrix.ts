@@ -1,70 +1,97 @@
 import { UserRole } from '../types';
 
-export type PermissionLevel = 'NONE' | 'VIEW' | 'FULL';
+export type PermissionLevel = 'NONE' | 'VIEW' | 'DATA_MANAGEMENT' | 'FULL';
 
 export type ModuleKey = 
+  | 'INTRO'
   | 'RECEPTION'
+  | 'CAMPAIGN'
   | 'INSPECTION'
   | 'REPAIR'
+  | 'POST_REPAIR'
+  | 'HANDOVER'
   | 'OPERATIONS'
-  | 'TRASH'
-  | 'USER_MANAGEMENT';
+  | 'QUICK_LOOKUP'
+  | 'USER_MANAGEMENT'
+  | 'TRASH';
 
 export const permissionMatrix: Record<UserRole, Record<ModuleKey, PermissionLevel>> = {
   admin: {
+    INTRO: 'FULL',
     RECEPTION: 'FULL',
+    CAMPAIGN: 'FULL',
     INSPECTION: 'FULL',
     REPAIR: 'FULL',
+    POST_REPAIR: 'FULL',
+    HANDOVER: 'FULL',
     OPERATIONS: 'FULL',
-    TRASH: 'FULL',
+    QUICK_LOOKUP: 'FULL',
     USER_MANAGEMENT: 'FULL',
-  },
-  dai_doi_truong: {
-    RECEPTION: 'FULL',
-    INSPECTION: 'FULL',
-    REPAIR: 'FULL',
-    OPERATIONS: 'FULL',
-    TRASH: 'NONE',
-    USER_MANAGEMENT: 'VIEW',
+    TRASH: 'FULL',
   },
   pho_dai_doi_truong: {
+    INTRO: 'VIEW',
     RECEPTION: 'FULL',
+    CAMPAIGN: 'FULL',
     INSPECTION: 'FULL',
     REPAIR: 'FULL',
+    POST_REPAIR: 'FULL',
+    HANDOVER: 'FULL',
     OPERATIONS: 'FULL',
-    TRASH: 'NONE',
+    QUICK_LOOKUP: 'FULL',
     USER_MANAGEMENT: 'NONE',
+    TRASH: 'NONE',
   },
   trung_doi_truong: {
+    INTRO: 'VIEW',
     RECEPTION: 'VIEW',
+    CAMPAIGN: 'VIEW',
     INSPECTION: 'VIEW',
-    REPAIR: 'FULL',
-    OPERATIONS: 'FULL',
-    TRASH: 'NONE',
+    REPAIR: 'DATA_MANAGEMENT',
+    POST_REPAIR: 'DATA_MANAGEMENT',
+    HANDOVER: 'DATA_MANAGEMENT',
+    OPERATIONS: 'DATA_MANAGEMENT',
+    QUICK_LOOKUP: 'VIEW',
     USER_MANAGEMENT: 'NONE',
+    TRASH: 'NONE',
   },
   to_truong: {
+    INTRO: 'VIEW',
     RECEPTION: 'NONE',
+    CAMPAIGN: 'NONE',
     INSPECTION: 'NONE',
-    REPAIR: 'FULL',
-    OPERATIONS: 'NONE',
-    TRASH: 'NONE',
+    REPAIR: 'DATA_MANAGEMENT',
+    POST_REPAIR: 'DATA_MANAGEMENT',
+    HANDOVER: 'DATA_MANAGEMENT',
+    OPERATIONS: 'DATA_MANAGEMENT',
+    QUICK_LOOKUP: 'VIEW',
     USER_MANAGEMENT: 'NONE',
+    TRASH: 'NONE',
   },
   kcs: {
-    RECEPTION: 'FULL',
-    INSPECTION: 'FULL',
+    INTRO: 'VIEW',
+    RECEPTION: 'DATA_MANAGEMENT',
+    CAMPAIGN: 'VIEW',
+    INSPECTION: 'DATA_MANAGEMENT',
     REPAIR: 'VIEW',
+    POST_REPAIR: 'VIEW',
+    HANDOVER: 'VIEW',
     OPERATIONS: 'NONE',
-    TRASH: 'NONE',
+    QUICK_LOOKUP: 'VIEW',
     USER_MANAGEMENT: 'NONE',
+    TRASH: 'NONE',
   },
   tro_ly_ky_thuat: {
-    RECEPTION: 'FULL',
-    INSPECTION: 'FULL',
-    REPAIR: 'FULL',
+    INTRO: 'VIEW',
+    RECEPTION: 'DATA_MANAGEMENT',
+    CAMPAIGN: 'DATA_MANAGEMENT',
+    INSPECTION: 'DATA_MANAGEMENT',
+    REPAIR: 'DATA_MANAGEMENT',
+    POST_REPAIR: 'DATA_MANAGEMENT',
+    HANDOVER: 'DATA_MANAGEMENT',
     OPERATIONS: 'NONE',
-    TRASH: 'NONE',
+    QUICK_LOOKUP: 'FULL',
     USER_MANAGEMENT: 'NONE',
+    TRASH: 'NONE',
   }
 };

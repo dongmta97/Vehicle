@@ -2,7 +2,7 @@
  * Shared Type Definitions for repair vehicles and histories
  */
 
-export type UserRole = 'admin' | 'dai_doi_truong' | 'pho_dai_doi_truong' | 'trung_doi_truong' | 'to_truong' | 'kcs' | 'tro_ly_ky_thuat';
+export type UserRole = 'admin' | 'pho_dai_doi_truong' | 'trung_doi_truong' | 'to_truong' | 'kcs' | 'tro_ly_ky_thuat';
 
 export interface User {
   uid: string;
@@ -15,6 +15,7 @@ export interface User {
   createdAt: string;
   createdBy: string;
   password?: string;
+  _firestoreDocId?: string;
 }
 
 export interface Vehicle {
@@ -89,6 +90,8 @@ export interface DamageItem {
 export interface DamageProtocol {
   protocolId: string;
   vehicleId: string;
+  /** repairSessionId sẽ là khóa liên kết chuẩn của toàn hệ thống */
+  repairSessionId?: string;
   reportNumber: string; // Số hiệu biên bản
   createdDate: string;  // Ngày lập
   place: string;        // Địa điểm lập
@@ -127,3 +130,143 @@ export const TECHNICAL_SECTIONS_LABEL: { [key in keyof TechnicalSections]: strin
   accessoryStatus: "Dụng cụ phụ kiện",
   paintStatus: "Phần sơn"
 };
+
+export interface PostRepairRecord {
+  id: string;
+  templateType: string;
+  vehicleId: string;
+  repairRecordId?: string; // Links to the repair history/session record
+  /** repairSessionId sẽ là khóa liên kết chuẩn của toàn hệ thống */
+  repairSessionId?: string;
+  createdBy: string;
+  createdByName: string;
+  createdAt: string;
+  updatedAt: string;
+  isDeleted: boolean;
+  formData: Record<string, any>;
+}
+
+/**
+ * Interface cho các biểu mẫu sửa chữa (repairForms)
+ */
+export interface RepairForm {
+  id: string;
+  templateType: string;
+  vehicleId: string;
+  /** repairSessionId sẽ là khóa liên kết chuẩn của toàn hệ thống */
+  repairSessionId?: string;
+  createdBy: string;
+  createdByName?: string;
+  createdAt: string;
+  updatedAt: string;
+  isDeleted: boolean;
+  formData: Record<string, any>;
+}
+
+/**
+ * Interface cho các phiếu kiểm tra động cơ / chi tiết trước sửa chữa (engineInspectionForms)
+ */
+export interface EngineInspectionForm {
+  id: string;
+  templateType: string;
+  vehicleId: string;
+  /** repairSessionId sẽ là khóa liên kết chuẩn của toàn hệ thống */
+  repairSessionId?: string;
+  createdBy: string;
+  createdByName?: string;
+  createdAt: string;
+  updatedAt: string;
+  isDeleted: boolean;
+  formData: Record<string, any>;
+}
+
+/**
+ * Interface cho các biên bản kiểm tra quân sự / xe (vehicleInspectionForms)
+ */
+export interface VehicleInspectionForm {
+  id: string;
+  templateType?: string;
+  vehicleId: string;
+  reportNumber?: string;
+  /** repairSessionId sẽ là khóa liên kết chuẩn của toàn hệ thống */
+  repairSessionId?: string;
+  createdBy: string;
+  createdByName?: string;
+  createdAt: string;
+  updatedAt: string;
+  isDeleted: boolean;
+  formData: Record<string, any>;
+}
+
+export interface RepairDossier {
+  id: string;
+  vehicleId: string;
+  damageProtocolId: string;
+  plateNumber: string;
+  vehicleName: string;
+  repairLevel: string;
+  workflowState: string;
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string;
+  isDeleted: boolean;
+}
+
+export enum WorkflowState {
+  REGISTERED = 'REGISTERED',
+  RECEIVED = 'RECEIVED',
+  REPAIRING = 'REPAIRING',
+  INSPECTED = 'INSPECTED',
+  HANDED_OVER = 'HANDED_OVER'
+}
+
+export interface RepairSession {
+  id: string;
+  vehicleId: string;
+  damageProtocolId: string;
+  campaignId?: string;
+  campaignName?: string;
+  campaignCode?: string;
+  repairNumber: number;
+  repairCode: string;
+  openedAt: string;
+  closedAt: string | null;
+  plateNumber: string;
+  vehicleName: string;
+  repairLevel: string;
+  workflowState: WorkflowState | string;
+  status: any;
+  receiveDate: string;
+  handoverDate: string;
+  repairFormsIds: string[];
+  engineInspectionIds: string[];
+  vehicleInspectionIds: string[];
+  postRepairInspectionId: string | null;
+  handoverId: string | null;
+  handoverTemplateCode?: string | null;
+  selectionTemplateCode?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  isDeleted: boolean;
+}
+
+export type CampaignStatus = 'PLANNING' | 'OPEN' | 'CLOSED';
+
+export interface RepairCampaign {
+  id: string;
+  campaignCode: string;
+  campaignName: string;
+  year: number;
+  round?: number | string;
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+  status: CampaignStatus;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  isDeleted: boolean;
+}
+
+

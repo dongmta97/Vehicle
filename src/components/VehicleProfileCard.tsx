@@ -79,11 +79,11 @@ export const VehicleProfileCard: React.FC<VehicleProfileCardProps> = ({ vehicle 
         <div className="mt-6 pt-5 border-t border-stone-150 grid grid-cols-2 gap-3 md:grid-cols-5 text-xs text-stone-500">
           <div className="flex flex-col">
             <span className="text-[11px] text-stone-400 font-sans uppercase font-medium tracking-wider">Người tạo:</span>
-            <strong className="text-stone-850 font-sans text-sm font-bold mt-1 text-emerald-950">{(vehicle as any).createdByName || "Nguyễn Văn A"}</strong>
+            <strong className="text-stone-850 font-sans text-sm font-bold mt-1 text-emerald-950">{(vehicle as any).createdByName || "—"}</strong>
           </div>
           <div className="flex flex-col">
             <span className="text-[11px] text-stone-400 font-sans uppercase font-medium tracking-wider">Đơn vị:</span>
-            <strong className="text-stone-850 font-sans text-sm font-bold mt-1 text-stone-800">{(vehicle as any).createdByUnit || "Tiểu đoàn 30"}</strong>
+            <strong className="text-stone-850 font-sans text-sm font-bold mt-1 text-stone-800">{(vehicle as any).createdByUnit || "—"}</strong>
           </div>
           <div className="flex flex-col">
             <span className="text-[11px] text-stone-400 font-sans uppercase font-medium tracking-wider">Ngày tạo:</span>
@@ -93,7 +93,7 @@ export const VehicleProfileCard: React.FC<VehicleProfileCardProps> = ({ vehicle 
           </div>
           <div className="flex flex-col">
             <span className="text-[11px] text-stone-400 font-sans uppercase font-medium tracking-wider">Người sửa cuối:</span>
-            <strong className="text-stone-850 font-sans text-sm font-bold mt-1 text-emerald-900">{(vehicle as any).updatedByName || "Trần Văn B"}</strong>
+            <strong className="text-stone-850 font-sans text-sm font-bold mt-1 text-emerald-900">{(vehicle as any).updatedByName || "—"}</strong>
           </div>
           <div className="flex flex-col">
             <span className="text-[11px] text-stone-400 font-sans uppercase font-medium tracking-wider">Ngày sửa cuối:</span>

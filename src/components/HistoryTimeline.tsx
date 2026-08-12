@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Calendar, AlertTriangle, CheckCircle, Flame, FileText, ChevronDown, ChevronUp, MessageSquare, ClipboardCheck, Trash2, Loader2 } from 'lucide-react';
 import { RepairHistory, TECHNICAL_SECTIONS_LABEL, TechnicalSections, TechnicalStatus } from '../types';
-import { formatVNTime } from '../utils/time';
+import { formatVNTime, formatVNDate } from '../utils/time';
 
 interface HistoryTimelineProps {
   history: RepairHistory[];
@@ -86,24 +86,8 @@ export const HistoryTimeline: React.FC<HistoryTimelineProps> = ({ history, onDel
   };
 
   const formatDateString = (dateStr: string) => {
-    try {
-      if (!dateStr) return 'Chưa xác định';
-      // If it contains dash, convert from YYYY-MM-DD
-      const parts = dateStr.split('-');
-      if (parts.length === 3) {
-        return `${parts[2]}/${parts[1]}/${parts[0]}`;
-      }
-      const d = new Date(dateStr);
-      if (!isNaN(d.getTime())) {
-        const dd = String(d.getDate()).padStart(2, '0');
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const yyyy = d.getFullYear();
-        return `${dd}/${mm}/${yyyy}`;
-      }
-      return dateStr;
-    } catch {
-      return dateStr;
-    }
+    if (!dateStr) return 'Chưa xác định';
+    return formatVNDate(dateStr) || 'Chưa xác định';
   };
 
   if (history.length === 0) {
@@ -187,9 +171,6 @@ export const HistoryTimeline: React.FC<HistoryTimelineProps> = ({ history, onDel
                       <span className="text-stone-300">|</span>
                       <span className="text-stone-400">Cấp bậc:</span>
                       <strong className="text-stone-700">{log.createdByRank || 'Thiếu tá'}</strong>
-                      <span className="text-stone-300">|</span>
-                      <span className="text-stone-400">Ngày giờ:</span>
-                      <strong className="text-stone-700">{formatVNTime(log.createdAt || log.receiveDate) || formatDateString(log.receiveDate)}</strong>
                     </div>
                   </div>
                   

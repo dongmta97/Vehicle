@@ -79,10 +79,7 @@ export const DamageProtocolList: React.FC<DamageProtocolListProps> = ({
                       <span className="text-stone-700">Biên bản: {protocol.reportNumber}</span>
                       <span className="text-stone-700">Người lập: <span className="font-bold">{(protocol.createdByName === 'admin' || protocol.lastEditedBy === 'admin') ? 'Lê Phương Đông' : (protocol.createdByName || protocol.lastEditedBy || 'Người dùng')}</span></span>
                       <span className="text-stone-700">Vai trò: <span className="font-bold">{protocol.createdByRole || 'Không xác định'}</span></span>
-                      <span className="flex items-center gap-1 font-sans">
-                        <Calendar className="h-3 w-3 inline text-stone-400" />
-                        {formatDateString(protocol.createdDate)}
-                      </span>
+                      
                     </div>
                   </div>
                 </div>

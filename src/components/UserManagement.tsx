@@ -212,18 +212,18 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onB
     }
 
     try {
-      await userService.deleteUser(userToDelete.username);
+      await userService.deleteUser(userToDelete);
       setSuccess(`Xóa thành công tài khoản "${userToDelete.fullName}".`);
       await fetchUsers();
       setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Fail to delete user:", err);
+      setError(err?.message || "Không thể xóa tài khoản. Vui lòng thử lại.");
     }
   };
 
   const getRoleBadgeColor = (roleStr: UserRole) => {
     switch(roleStr) {
-      case 'dai_doi_truong':
       case 'admin':
         return 'bg-red-50 text-red-800 border-red-200';
       case 'pho_dai_doi_truong':
@@ -243,8 +243,6 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onB
 
   const getRoleLabel = (roleStr: UserRole) => {
     switch(roleStr) {
-      case 'dai_doi_truong':
-        return 'Đại đội trưởng';
       case 'pho_dai_doi_truong':
         return 'Phó Đại đội trưởng';
       case 'trung_doi_truong':
@@ -342,8 +340,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onB
                 type="text"
                 required
                 disabled={!!editingUser}
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                value={typeof (username) === 'string' ? (username).normalize('NFC') : (username)}
+                onChange={(e) => setUsername(e.target.value.normalize('NFC'))}
                 placeholder="Ví dụ: tuấn.kt, minh.lh"
                 className={`block w-full px-3.5 py-2.5 border border-stone-250 rounded-xl text-stone-800 text-xs focus:ring-1 focus:ring-emerald-800 focus:outline-none ${
                   editingUser ? 'bg-stone-200 cursor-not-allowed text-stone-500 font-semibold' : 'bg-stone-50'
@@ -359,8 +357,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onB
                 <input
                   type="password"
                   required={!editingUser}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  value={typeof (password) === 'string' ? (password).normalize('NFC') : (password)}
+                  onChange={(e) => setPassword(e.target.value.normalize('NFC'))}
                   placeholder={editingUser ? "Nhập mật khẩu mới hoặc để trống" : "Mật khẩu truy cập"}
                   className="block w-full px-3.5 py-2.5 bg-stone-50 border border-stone-250 rounded-xl text-stone-800 text-xs focus:ring-1 focus:ring-emerald-800 focus:outline-none"
                 />
@@ -374,8 +372,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onB
               <input
                 type="text"
                 required
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                value={typeof (fullName) === 'string' ? (fullName).normalize('NFC') : (fullName)}
+                onChange={(e) => setFullName(e.target.value.normalize('NFC'))}
                 placeholder="Ví dụ: Trần Minh Hoàng"
                 className="block w-full px-3.5 py-2.5 bg-stone-50 border border-stone-250 rounded-xl text-stone-800 text-xs focus:ring-1 focus:ring-emerald-800 focus:outline-none"
               />
@@ -387,8 +385,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onB
               </label>
               <input
                 type="text"
-                value={rank}
-                onChange={(e) => setRank(e.target.value)}
+                value={typeof (rank) === 'string' ? (rank).normalize('NFC') : (rank)}
+                onChange={(e) => setRank(e.target.value.normalize('NFC'))}
                 placeholder="Ví dụ: Thượng úy, Đại úy, Thiếu tá"
                 className="block w-full px-3.5 py-2.5 bg-stone-50 border border-stone-250 rounded-xl text-stone-800 text-xs focus:ring-1 focus:ring-emerald-800 focus:outline-none"
               />
@@ -400,8 +398,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onB
               </label>
               <input
                 type="text"
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
+                value={typeof (unit) === 'string' ? (unit).normalize('NFC') : (unit)}
+                onChange={(e) => setUnit(e.target.value.normalize('NFC'))}
                 placeholder="Ví dụ: Đại đội sửa chữa 1, Tiểu đoàn 30"
                 className="block w-full px-3.5 py-2.5 bg-stone-50 border border-stone-250 rounded-xl text-stone-800 text-xs focus:ring-1 focus:ring-emerald-800 focus:outline-none"
               />
@@ -412,11 +410,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onB
                 Chức vụ
               </label>
               <select
-                value={role}
-                onChange={(e) => setRole(e.target.value as UserRole)}
+                value={typeof (role) === 'string' ? (role).normalize('NFC') : (role)}
+                onChange={(e) => setRole(e.target.value.normalize('NFC') as UserRole)}
                 className="block w-full px-3.5 py-2.5 bg-stone-50 border border-stone-250 rounded-xl text-stone-800 text-xs focus:ring-1 focus:ring-emerald-800 focus:outline-none cursor-pointer"
               >
-                <option value="dai_doi_truong">Đại đội trưởng</option>
                 <option value="pho_dai_doi_truong">Phó Đại đội trưởng</option>
                 <option value="trung_doi_truong">Trung đội trưởng</option>
                 <option value="to_truong">Tổ trưởng</option>
@@ -492,7 +489,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onB
                   <th className="py-2 sm:py-3 px-1 sm:px-4">Đơn vị / Cấp bậc</th>
                   <th className="py-2 sm:py-3 px-1 sm:px-4">Chức vụ</th>
                   <th className="py-2 sm:py-3 px-1 sm:px-4">Trạng thái</th>
-                  <th className="py-2 sm:py-3 px-1 sm:px-4">Ngày tạo</th>
+                  
                   <th className="py-2 sm:py-3 px-1 sm:px-4 text-right">Hành động</th>
                 </tr>
               </thead>
@@ -546,10 +543,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onB
                       </button>
                     </td>
                     <td className="py-2 sm:py-4 px-1 sm:px-4 text-stone-500 font-mono">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="h-3 w-3" />
-                        <span>{formatVNTime(user.createdAt) || "Không rõ"}</span>
-                      </div>
+                      
                       <div className="text-[10px] mt-0.5 text-stone-400">Tạo bởi: {user.createdBy || 'hệ thống'}</div>
                     </td>
                     <td className="py-2 sm:py-4 px-1 sm:px-4 text-right">

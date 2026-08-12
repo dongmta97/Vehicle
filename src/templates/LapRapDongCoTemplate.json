@@ -1,0 +1,128 @@
+{
+  "templateVersion": 1,
+  "vehicleCode": "LAP-RAP-DONG-CO",
+  "vehicleName": "Lắp ráp, hiệu chỉnh, chạy rà cụm động cơ",
+  "protocolType": "LAP_RAP",
+  "sections": [
+    {
+      "name": "I. LẮP RÁP",
+      "items": [
+        {
+          "tt": "1",
+          "name": "Khe hở bánh răng cam cơ",
+          "yeuCau": "≤ 0,2"
+        },
+        {
+          "tt": "2",
+          "name": "Khe hở dọc trục cam",
+          "yeuCau": "0,1 ÷ 0,2"
+        },
+        {
+          "tt": "3",
+          "name": "Độ đảo mặt bánh đà bán kính 140 mm",
+          "yeuCau": "≤ 0,15"
+        },
+        {
+          "tt": "4",
+          "name": "Lực siết ổ trục khuỷu N.m (Kg.m), (lb.ft)",
+          "yeuCau": "122,5 ÷ 133,3 (12,5 ÷ 13,6) (91 ÷ 98,5)"
+        },
+        {
+          "tt": "5",
+          "name": "Lực siết bulong biên N.m (Kg.m), (lb.ft)",
+          "yeuCau": "66,6 ÷ 73,5 (6,8 ÷ 7,5) (49 ÷ 54,3)"
+        },
+        {
+          "tt": "6",
+          "name": "Lực siết đai ốc nắp máy N.m (Kg.m), (lb.ft)",
+          "yeuCau": "71,5 ÷ 76,4 (7,3 ÷ 7,8) (52,8 ÷ 56,4)"
+        },
+        {
+          "tt": "7",
+          "name": "Lực xiết bulông bánh đà N.m (Kg.m), (lb.ft)",
+          "yeuCau": "73,5 ÷ 78,4 (7,5 ÷ 8) (54,3 ÷ 57,9)"
+        },
+        {
+          "tt": "8",
+          "name": "Thử độ kín xylanh lắp vào động cơ với áp suất 4kgf/cm2",
+          "yeuCau": "Không rò nước xuống catte"
+        }
+      ]
+    },
+    {
+      "name": "II. CHẠY RÀ",
+      "items": [
+        {
+          "tt": "1",
+          "name": "Rà nguội không áp",
+          "yeuCau": "TCN"
+        },
+        {
+          "tt": "2",
+          "name": "Chạy rà nóng không tải",
+          "yeuCau": "TCCS"
+        },
+        {
+          "tt": "3",
+          "name": "Chạy rà nóng có tải",
+          "yeuCau": "TCCS"
+        }
+      ]
+    },
+    {
+      "name": "III. THỬ LỰC",
+      "items": [
+        {
+          "tt": "1",
+          "name": "Tốc độ vòng quay trục cơ:",
+          "yeuCau": ""
+        },
+        {
+          "tt": "2",
+          "name": "Số vòng quay không tải nhỏ nhất, r/min",
+          "yeuCau": "700 ÷ 750"
+        },
+        {
+          "tt": "3",
+          "name": "Số vòng quay lớn nhất, r/min",
+          "yeuCau": "4000"
+        },
+        {
+          "tt": "4",
+          "name": "Công suất khi n = 4000 r/min, kW (HP)",
+          "yeuCau": "47 (64)"
+        },
+        {
+          "tt": "5",
+          "name": "Chênh lệch áp suất buồng đốt cuối kỳ nén giữa các xy lanh, KPa (Kgf/cm2), không lớn hơn",
+          "yeuCau": "98,1 (1,0)"
+        }
+      ]
+    },
+    {
+      "name": "IV. HỆ BÔI TRƠN",
+      "items": [
+        {
+          "tt": "1",
+          "name": "Áp suất dầu KPa (Kgf/cm2)",
+          "yeuCau": ""
+        },
+        {
+          "tt": "2",
+          "name": "Áp suất dầu bôi trơn ở số vòng quay nhỏ nhất , KPa (Kgf/cm2), không nhỏ hơn",
+          "yeuCau": "49 (0,5)"
+        },
+        {
+          "tt": "3",
+          "name": "Áp suất dầu bôi trơn lớn nhất,KPa (Kgf/cm2), không lớn hơn",
+          "yeuCau": "392 (4,0)"
+        },
+        {
+          "tt": "4",
+          "name": "Không cho phép rò rỉ dầu, nước, tiếng kêu gõ bất thường.",
+          "yeuCau": ""
+        }
+      ]
+    }
+  ]
+}

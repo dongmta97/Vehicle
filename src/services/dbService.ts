@@ -10,7 +10,9 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { db, auth, isFirebaseConfigured, DataService } from '../firebase';
-import { Vehicle, RepairHistory, TechnicalStatus, DamageProtocol, DamageItem } from '../types';
+import { Vehicle, RepairHistory, TechnicalStatus, DamageProtocol, DamageItem, RepairSession, RepairCampaign } from '../types';
+import { createRepairSession } from './repairSessionService';
+import { createRepairCampaign } from './repairCampaignService';
 
 // Standard Pillar 3 diagnostics for Firestore security audits
 export enum OperationType {
@@ -60,109 +62,33 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
   throw new Error(JSON.stringify(errInfo));
 }
 
-// PREMIUM PRELOADED REALISTIC MOCK DATASET
-const MOCK_VEHICLES: Vehicle[] = [
-  {
-    vehicleId: "29A188888",
-    plateNumber: "29-A1 888.88",
-    brand: "Ural-4320",
-    vehicleType: "Xe tải việt dã 3 cầu",
-    vehicleGroup: "Xe vận tải quân sự",
-    chassisNumber: "UR-9812739",
-    engineNumber: "YAMZ-238-12"
-  },
-  {
-    vehicleId: "80A01234",
-    plateNumber: "80A-012.34",
-    brand: "UAZ-469",
-    vehicleType: "Xe quân sự chỉ huy",
-    vehicleGroup: "Xe con quân sự",
-    chassisNumber: "UAZ-469-823",
-    engineNumber: "UMZ-417-09"
-  }
-];
-
-const MOCK_REPAIR_HISTORY: RepairHistory[] = [
-  {
-    historyId: "h1",
-    vehicleId: "29A188888",
-    reportNumber: "BB-2026-001",
-    receiveDate: "2026-05-10",
-    giver: "Nguyễn Văn Hùng (Thượng uý)",
-    receiver: "Trần Quốc Tuấn (Kỹ thuật viên)",
-    engineStatus: "Tốt",
-    electricalStatus: "Cần kiểm tra",
-    chassisStatus: "Tốt",
-    bodyStatus: "Tốt",
-    cushionStatus: "Tốt",
-    tireBatteryStatus: "Tốt",
-    specialEquipmentStatus: "Cần kiểm tra",
-    accessoryStatus: "Tốt",
-    paintStatus: "Tốt",
-    note: "Xe có tiếng gõ nhẹ ở đầu nắp capo khi đề nổ buổi sáng. Đèn pha bên trái cường độ sáng yếu.",
-    unitComment: "Đơn vị kiến nghị thay thế bóng pha trái và căn chỉnh tay hầm máy.",
-    createdAt: "2026-05-10T08:30:00Z"
-  },
-  {
-    historyId: "h2",
-    vehicleId: "29A188888",
-    reportNumber: "BB-2026-004",
-    receiveDate: "2026-05-22",
-    giver: "Nguyễn Văn Hùng (Thượng uý)",
-    receiver: "Lê Hồng Nam (Thiếu tá)",
-    engineStatus: "Tốt",
-    electricalStatus: "Tốt",
-    chassisStatus: "Cần sửa chữa",
-    bodyStatus: "Tốt",
-    cushionStatus: "Tốt",
-    tireBatteryStatus: "Tốt",
-    specialEquipmentStatus: "Tốt",
-    accessoryStatus: "Tốt",
-    paintStatus: "Tốt",
-    note: "Xe xuất hiện hiện tượng rung lắc mạnh phần gầm khi chạy tốc độ cao trên 60km/h.",
-    unitComment: "Đơn vị đề nghị kiểm tra hệ thống treo và cân bằng lốp xe.",
-    createdAt: "2026-05-22T07:15:00Z"
-  },
-  {
-    historyId: "h3",
-    vehicleId: "80A01234",
-    reportNumber: "BB-2026-002",
-    receiveDate: "2026-05-15",
-    giver: "Đặng Thanh Sơn (Chuẩn uý)",
-    receiver: "Trần Quốc Tuấn (Kỹ thuật viên)",
-    engineStatus: "Cần khám",
-    electricalStatus: "Hỏng",
-    chassisStatus: "Tốt",
-    bodyStatus: "Cần kiểm tra",
-    cushionStatus: "Tốt",
-    tireBatteryStatus: "Tốt",
-    specialEquipmentStatus: "Tốt",
-    accessoryStatus: "Tốt",
-    paintStatus: "Tốt",
-    note: "Đèn xi nhan hai bên không nhấp nháy khi bật công tắc. Hệ thống khởi động chập chờn.",
-    unitComment: "Nghi ngờ hỏng rơ-le xi nhan hoặc đứt cầu chì phụ.",
-    createdAt: "2026-05-15T14:20:00Z" as TechnicalStatus // using loose typing for demo representation
-  }
-] as unknown as RepairHistory[]; // safety cast to maintain correct record layout
+// EMPTY DATASET DEFAULT
+const MOCK_VEHICLES: Vehicle[] = [];
+const MOCK_REPAIR_HISTORY: RepairHistory[] = [];
 
 // Local storage helpers
 const getLocalVehicles = (): Vehicle[] => {
   const stored = localStorage.getItem('local_vehicles');
   if (!stored) {
-    localStorage.setItem('local_vehicles', JSON.stringify(MOCK_VEHICLES));
-    localStorage.setItem('vehicles_initialized', 'true');
-    return MOCK_VEHICLES;
+    return [];
   }
-  return JSON.parse(stored);
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return [];
+  }
 };
 
 const getLocalHistory = (): RepairHistory[] => {
   const stored = localStorage.getItem('local_repair_history');
   if (!stored) {
-    localStorage.setItem('local_repair_history', JSON.stringify(MOCK_REPAIR_HISTORY));
-    return MOCK_REPAIR_HISTORY;
+    return [];
   }
-  return JSON.parse(stored);
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return [];
+  }
 };
 
 // Normalized string helper to query vehicle plates reliably
@@ -184,20 +110,20 @@ export function getCreatorAuditParams() {
   const currentUser = getCurrentUserSession();
   if (currentUser) {
     return {
-      createdBy: currentUser.uid || currentUser.username || 'unknown',
-      createdByName: currentUser.fullName || 'unknown',
-      createdByRank: currentUser.rank || 'unknown',
-      createdByUnit: currentUser.unit || 'unknown',
-      createdByRole: currentUser.role || 'unknown',
+      createdBy: currentUser.uid || currentUser.username || '',
+      createdByName: currentUser.fullName || '',
+      createdByRank: currentUser.rank || '',
+      createdByUnit: currentUser.unit || '',
+      createdByRole: currentUser.role || '',
       createdAt: new Date().toISOString()
     };
   }
   return {
-    createdBy: 'default_officer_id',
-    createdByName: 'Sĩ quan trực ban',
-    createdByRank: 'Đại úy',
-    createdByUnit: 'Tiểu đoàn 30',
-    createdByRole: 'tro_ly_ky_thuat',
+    createdBy: '',
+    createdByName: '',
+    createdByRank: '',
+    createdByUnit: '',
+    createdByRole: '',
     createdAt: new Date().toISOString()
   };
 }
@@ -206,14 +132,14 @@ export function getUpdaterAuditParams() {
   const currentUser = getCurrentUserSession();
   if (currentUser) {
     return {
-      updatedBy: currentUser.uid || currentUser.username || 'unknown',
-      updatedByName: currentUser.fullName || 'unknown',
+      updatedBy: currentUser.uid || currentUser.username || '',
+      updatedByName: currentUser.fullName || '',
       updatedAt: new Date().toISOString()
     };
   }
   return {
-    updatedBy: 'default_officer_id',
-    updatedByName: 'Sĩ quan trực ban',
+    updatedBy: '',
+    updatedByName: '',
     updatedAt: new Date().toISOString()
   };
 }
@@ -622,12 +548,6 @@ export const dbService = {
       }
     }
 
-    // 3. Fallback to preloaded mock set if empty (only if not loaded from Firestore and not initialized yet)
-    if (!didLoadFromFirestore && list.length === 0 && localStorage.getItem('vehicles_initialized') !== 'true') {
-      list = [...MOCK_VEHICLES];
-      localStorage.setItem('vehicles_initialized', 'true');
-    }
-
     return list;
   },
 
@@ -843,9 +763,6 @@ export const dbService = {
         console.error(e);
       }
     }
-    
-    // Also mark initialized as true to prevent reverting to mock dataset
-    localStorage.setItem('vehicles_initialized', 'true');
   },
 
   /**
@@ -901,7 +818,7 @@ export const dbService = {
     const deduplicatedResult: DamageProtocol[] = [];
 
     combinedProtocols.forEach(p => {
-      const pId = p.protocolId || p.id;
+      const pId = p.protocolId || (p as any).id;
       if (!seenIds.has(pId)) {
         seenIds.add(pId);
         deduplicatedResult.push(p);
@@ -952,11 +869,13 @@ export const dbService = {
     }
 
     const protocolId = 'DP-' + Math.random().toString(36).substring(2, 11).toUpperCase();
+    const repairSessionId = protocolData.repairSessionId || `SESSION_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const creatorAudit = getCreatorAuditParams();
     const updaterAudit = getUpdaterAuditParams();
     const newProtocol: DamageProtocol = {
       ...protocolData,
       protocolId,
+      repairSessionId,
       ...creatorAudit,
       ...updaterAudit
     } as any;
@@ -977,6 +896,36 @@ export const dbService = {
     }
     protocols.push(newProtocol);
     localStorage.setItem(key, JSON.stringify(protocols));
+
+    // =========================================================================
+    // GIAI ĐOẠN 5: TỰ ĐỘNG TẠO REPAIR SESSION SAU KHI LƯU BIÊN BẢN GIAO NHẬN TBKT
+    // =========================================================================
+    const dpId = newProtocol.protocolId || (newProtocol as any).id;
+    if (dpId) {
+      try {
+        const existingSessions = await this.getAllRepairSessions();
+        const hasExistingSession = existingSessions.some(
+          s => !s.isDeleted && s.damageProtocolId === dpId
+        );
+        if (!hasExistingSession) {
+          const sessionData = createRepairSession({
+            id: repairSessionId,
+            damageProtocolId: dpId,
+            vehicleId: newProtocol.vehicleId || '',
+            plateNumber: newProtocol.plateNumber || (newProtocol as any).vehiclePlateNumber || '',
+            vehicleName: newProtocol.brand || (newProtocol as any).vehicleName || (newProtocol as any).vehicleType || '',
+            repairLevel: (newProtocol as any).repairLevel || '',
+            receiveDate: newProtocol.createdDate || (newProtocol as any).receiveDate || (newProtocol.createdAt ? String(newProtocol.createdAt).split('T')[0] : new Date().toISOString().split('T')[0]),
+            createdBy: newProtocol.createdBy || '',
+            workflowState: 'RECEIVED',
+            status: 'OPEN'
+          });
+          await this.saveRepairSession(sessionData);
+        }
+      } catch (sessionErr) {
+        console.warn("Auto-creation of RepairSession after saveDamageProtocol failed:", sessionErr);
+      }
+    }
 
     return newProtocol;
   },
@@ -1204,6 +1153,27 @@ export const dbService = {
           }));
        }
     } catch(e) {}
+
+    // 3.6. Post Repair Records
+    try {
+       const storedPRRs = await DataService.load('postRepairRecords');
+       if (Array.isArray(storedPRRs)) {
+          trashItems.push(...storedPRRs.filter((f:any) => f.isDeleted === true || f.isDeleted === 'true').map((f:any) => {
+             let timePart = f.createdAt?.seconds ? f.createdAt.seconds : (f.createdAt?.toMillis ? f.createdAt.toMillis() : f.createdAt);
+             return {
+                ...f,
+                id: f.id || `${f.templateType || 'FORM'}-${f.vehicleId}-${timePart}`,
+                name: `Biểu mẫu sau SC: ${f.templateName || f.templateType || 'Không rõ'} (Xe ${getPlateNumber(f.vehicleId)})`,
+                type: 'POST_REPAIR_RECORD',
+                typeName: 'Hồ sơ sau sửa chữa',
+                deletedBy: f.deletedBy || f.createdBy || 'Không rõ',
+                deletedByName: f.deletedByName,
+                deletedByRole: f.deletedByRole,
+                deletedAt: f.deletedAt || f.createdAt
+             };
+          }));
+       }
+    } catch(e) {}
     
     // 4. Repair History
     try {
@@ -1281,7 +1251,7 @@ export const dbService = {
           }
           
           keys.forEach(key => {
-            if (key.startsWith('local_') || key === 'vehicles' || key === 'repairForms' || key === 'vehicleInspectionForms' || key === 'damageProtocols' || key === 'repairHistory') {
+            if (key.startsWith('local_') || key === 'vehicles' || key === 'repairForms' || key === 'vehicleInspectionForms' || key === 'damageProtocols' || key === 'repairHistory' || key === 'postRepairRecords') {
               scannedCount++;
               try {
                 const stored = localStorage.getItem(key);
@@ -1340,6 +1310,9 @@ export const dbService = {
        } else if (type === 'REPAIR_FORM') {
           await DataService.update('repairForms', id, updatePayload);
           syncAllLocalCaches(id);
+       } else if (type === 'POST_REPAIR_RECORD') {
+          await DataService.update('postRepairRecords', id, updatePayload);
+          syncAllLocalCaches(id);
        } else if (type === 'REPAIR_LOG') {
           await DataService.update('repairHistory', id, updatePayload);
           syncAllLocalCaches(id);
@@ -1370,6 +1343,8 @@ export const dbService = {
           await DataService.delete('vehicleInspectionForms', id);
        } else if (type === 'REPAIR_FORM') {
           await DataService.delete('repairForms', id);
+       } else if (type === 'POST_REPAIR_RECORD') {
+          await DataService.delete('postRepairRecords', id);
        } else if (type === 'REPAIR_LOG') {
           await DataService.delete('repairHistory', id);
        }
@@ -1756,20 +1731,21 @@ export const dbService = {
       vehicleId,
       reportNumber: formData.reportNo || `BBKT-${plateNumber}`,
       createdDate: `${formData.docYear || new Date().getFullYear()}-${formData.docMonth || '01'}-${formData.docDay || '01'}`,
-      place: formData.receiverUnit || "Trạm sửa chữa - Tiểu đoàn SCTH30",
-      representativeGeneral: `${formData.receiverRepresentative || 'Trần Quốc Tuấn'} (${formData.receiverRank || 'Đại úy'} - ${formData.receiverPosition || 'Tổ trưởng kỹ thuật'})`,
-      representativeTechnical: formData.receiverRepresentative || "Trần Quốc Tuấn",
-      technician: `${formData.receiverRepresentative || 'Trần Quốc Tuấn'} - ${formData.receiverPosition || 'Tổ trưởng kỹ thuật'}`,
-      driver: `${formData.giverRepresentative || 'Hạ sĩ Nguyễn Văn Hùng'} - ${formData.giverPosition || 'Lái xe'}`,
+      place: formData.receiverUnit || "",
+      representativeGeneral: formData.receiverRepresentative ? `${formData.receiverRepresentative}${formData.receiverRank || formData.receiverPosition ? ` (${[formData.receiverRank, formData.receiverPosition].filter(Boolean).join(' - ')})` : ''}` : "",
+      representativeTechnical: formData.receiverRepresentative || "",
+      technician: formData.receiverRepresentative ? `${formData.receiverRepresentative}${formData.receiverPosition ? ` - ${formData.receiverPosition}` : ''}` : "",
+      driver: formData.giverRepresentative ? `${formData.giverRepresentative}${formData.giverPosition ? ` - ${formData.giverPosition}` : ''}` : "",
       plateNumber: formData.plateNumber || plateNumber,
       brand: formData.vktbktName || "",
       vehicleType: formData.vktbktName || "",
       chassisNumber: formData.actualChassisNumber || formData.chassisNumber || "",
       engineNumber: formData.actualEngineNumber || formData.engineNumber || "",
       orderNumber: "", 
-      odometer: "15,400 km",
+      odometer: formData.odometer || "",
       items: dpItems,
       conclusion: formData.recommendation || "Nhất trí đưa xe vào sửa chữa chi tiết.",
+      repairSessionId: `SESSION_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       ...dpCreatorAudit,
       ...updaterAudit
     } as any;
@@ -1785,6 +1761,576 @@ export const dbService = {
     dpList.push(damageProtocolPayload);
     localStorage.setItem(dpKey, JSON.stringify(dpList));
 
+    // Auto-create RepairSession for synced damageProtocol if not existing
+    const syncDpId = damageProtocolPayload.protocolId;
+    if (syncDpId) {
+      try {
+        const existingSessions = await this.getAllRepairSessions();
+        const hasExistingSession = existingSessions.some(
+          s => !s.isDeleted && s.damageProtocolId === syncDpId
+        );
+        if (!hasExistingSession) {
+          const sessionData = createRepairSession({
+            id: damageProtocolPayload.repairSessionId,
+            damageProtocolId: syncDpId,
+            vehicleId: damageProtocolPayload.vehicleId || '',
+            plateNumber: damageProtocolPayload.plateNumber || '',
+            vehicleName: damageProtocolPayload.brand || damageProtocolPayload.vehicleType || '',
+            repairLevel: (damageProtocolPayload as any).repairLevel || '',
+            receiveDate: damageProtocolPayload.createdDate || new Date().toISOString().split('T')[0],
+            createdBy: damageProtocolPayload.createdBy || '',
+            workflowState: 'RECEIVED',
+            status: 'OPEN'
+          });
+          await this.saveRepairSession(sessionData);
+        }
+      } catch (sessionErr) {
+        console.warn("Auto-creation of RepairSession during inspection form sync failed:", sessionErr);
+      }
+    }
+
     return data;
+  },
+
+  // =========================================================================
+  // REPAIR SESSIONS MODULE (FIRESTORE & WORKING CACHE)
+  // Collection Firestore: 'repairSessions'
+  // =========================================================================
+
+  /**
+   * Saves or creates a new repair session in Firestore / LocalStorage
+   */
+  async saveRepairSession(sessionData: Partial<RepairSession> & { vehicleId: string; plateNumber: string }): Promise<RepairSession> {
+    // If creating a NEW repair session (no ID provided), check if an OPEN session already exists for this vehicle
+    if (!sessionData.id) {
+      try {
+        const allSessions = await this.getAllRepairSessions();
+        const targetPlate = (sessionData.plateNumber || '').toUpperCase();
+        const existingOpenSession = allSessions.find(
+          (s) =>
+            !s.isDeleted &&
+            (s.vehicleId === sessionData.vehicleId || (targetPlate && s.plateNumber?.toUpperCase() === targetPlate)) &&
+            s.workflowState !== 'HANDED_OVER' &&
+            s.status !== 'CLOSED' &&
+            !s.closedAt
+        );
+        if (existingOpenSession) {
+          return existingOpenSession;
+        }
+      } catch (checkErr) {
+        console.warn("Failed to check open repair sessions:", checkErr);
+      }
+    }
+
+    const id = sessionData.id || `SESSION_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const creatorAudit = getCreatorAuditParams();
+    const updaterAudit = getUpdaterAuditParams();
+    const now = new Date().toISOString();
+
+    let repairNumber = sessionData.repairNumber;
+    // Calculate if creating a new session (not provided or is 0)
+    if (!repairNumber) {
+      try {
+        const allSessions = await this.getAllRepairSessions();
+        const vehicleSessions = allSessions.filter(s => s.vehicleId === sessionData.vehicleId && !s.isDeleted);
+        const maxNumber = vehicleSessions.reduce((max, s) => {
+          return (s.repairNumber && s.repairNumber > max) ? s.repairNumber : max;
+        }, 0);
+        repairNumber = maxNumber + 1;
+      } catch (err) {
+        console.warn("Failed to calculate repairNumber, defaulting to 1:", err);
+        repairNumber = 1;
+      }
+    }
+
+    const newSession: RepairSession = {
+      id,
+      vehicleId: sessionData.vehicleId,
+      damageProtocolId: sessionData.damageProtocolId || '',
+      campaignId: sessionData.campaignId || '',
+      campaignName: sessionData.campaignName || '',
+      campaignCode: sessionData.campaignCode || '',
+      repairNumber,
+      repairCode: sessionData.repairCode || (sessionData.campaignCode ? `${sessionData.campaignCode}-${sessionData.plateNumber}-${String(repairNumber).padStart(2, '0')}` : `HS-${sessionData.plateNumber}-${String(repairNumber).padStart(2, '0')}`),
+      openedAt: sessionData.openedAt || now,
+      closedAt: sessionData.closedAt || null,
+      plateNumber: sessionData.plateNumber,
+      vehicleName: sessionData.vehicleName || '',
+      repairLevel: sessionData.repairLevel || '',
+      workflowState: sessionData.workflowState || 'RECEIVED',
+      status: sessionData.status || {
+        hasDamageProtocol: true,
+        hasInspectionForm: false,
+        hasRepairHistory: false,
+        hasPostRepairRecord: false,
+      },
+      receiveDate: sessionData.receiveDate || now.split('T')[0],
+      handoverDate: sessionData.handoverDate || '',
+      repairFormsIds: sessionData.repairFormsIds || [],
+      engineInspectionIds: sessionData.engineInspectionIds || [],
+      vehicleInspectionIds: sessionData.vehicleInspectionIds || [],
+      postRepairInspectionId: sessionData.postRepairInspectionId ?? null,
+      handoverId: sessionData.handoverId ?? null,
+      handoverTemplateCode: sessionData.handoverTemplateCode ?? null,
+      selectionTemplateCode: sessionData.selectionTemplateCode ?? null,
+      createdBy: sessionData.createdBy || creatorAudit.createdBy,
+      createdAt: sessionData.createdAt || creatorAudit.createdAt,
+      updatedAt: updaterAudit.updatedAt,
+      isDeleted: sessionData.isDeleted ?? false,
+    };
+
+    try {
+      await DataService.save('repairSessions', newSession);
+    } catch (err) {
+      console.warn("Firestore 'save repairSessions' failed:", err);
+    }
+
+    const key = 'local_repairSessions';
+    const stored = localStorage.getItem(key);
+    let sessions: RepairSession[] = [];
+    if (stored) {
+      try {
+        sessions = JSON.parse(stored);
+      } catch {}
+    }
+    const idx = sessions.findIndex(s => s.id === id);
+    if (idx >= 0) {
+      sessions[idx] = newSession;
+    } else {
+      sessions.push(newSession);
+    }
+    localStorage.setItem(key, JSON.stringify(sessions));
+
+    return newSession;
+  },
+
+  /**
+   * Fetches a single repair session by id from Firestore / LocalStorage
+   */
+  async getRepairSession(id: string): Promise<RepairSession | null> {
+    try {
+      const doc = await DataService.get('repairSessions', id);
+      if (doc && !doc.isDeleted) {
+        return doc as RepairSession;
+      }
+    } catch (err) {
+      console.warn("Firestore 'getRepairSession' failed:", err);
+    }
+
+    const key = 'local_repairSessions';
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      try {
+        const sessions: RepairSession[] = JSON.parse(stored);
+        const found = sessions.find(s => s.id === id && !s.isDeleted);
+        if (found) return found;
+      } catch {}
+    }
+    return null;
+  },
+
+  /**
+   * Fetches all repair sessions directly from Firestore / LocalStorage
+   */
+  async getAllRepairSessions(): Promise<RepairSession[]> {
+    let combinedSessions: RepairSession[] = [];
+
+    try {
+      const storedList = await DataService.load('repairSessions');
+      if (Array.isArray(storedList)) {
+        const visibleList = storedList.filter((s: any) => !s.isDeleted);
+        const mapped = visibleList.map((s: any) => {
+          let createdAtStr = new Date().toISOString();
+          if (s.createdAt && typeof s.createdAt.toDate === "function") {
+            createdAtStr = s.createdAt.toDate().toISOString();
+          } else if (typeof s.createdAt === 'string') {
+            createdAtStr = s.createdAt;
+          }
+          let updatedAtStr = createdAtStr;
+          if (s.updatedAt && typeof s.updatedAt.toDate === "function") {
+            updatedAtStr = s.updatedAt.toDate().toISOString();
+          } else if (typeof s.updatedAt === 'string') {
+            updatedAtStr = s.updatedAt;
+          }
+          return {
+            ...s,
+            createdAt: createdAtStr,
+            updatedAt: updatedAtStr
+          } as RepairSession;
+        });
+        combinedSessions.push(...mapped);
+      }
+    } catch (err) {
+      console.warn("Firestore 'repairSessions' fetch failed:", err);
+    }
+
+    const key = 'local_repairSessions';
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      try {
+        const localSessions: RepairSession[] = JSON.parse(stored);
+        const visibleLocal = localSessions.filter((s: any) => !s.isDeleted);
+        visibleLocal.forEach(ls => {
+          if (!combinedSessions.some(cs => cs.id === ls.id)) {
+            combinedSessions.push(ls);
+          }
+        });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // Deduplicate
+    const seenIds = new Set<string>();
+    const deduplicatedResult: RepairSession[] = [];
+
+    combinedSessions.forEach(s => {
+      if (!seenIds.has(s.id)) {
+        seenIds.add(s.id);
+        deduplicatedResult.push(s);
+      }
+    });
+
+    // Sort chronological descending
+    deduplicatedResult.sort((a, b) => {
+      const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+      const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
+
+    return deduplicatedResult;
+  },
+
+  /**
+   * Updates an existing repair session in Firestore / LocalStorage
+   */
+  async updateRepairSession(id: string, updates: Partial<RepairSession>): Promise<RepairSession> {
+    const updaterAudit = getUpdaterAuditParams();
+    const updatePayload = {
+      ...updates,
+      ...updaterAudit
+    };
+
+    try {
+      await DataService.update('repairSessions', id, updatePayload);
+    } catch (err) {
+      console.error("Firestore 'updateRepairSession' failed:", err);
+      throw err;
+    }
+
+    const key = 'local_repairSessions';
+    const stored = localStorage.getItem(key);
+    let updatedSession: RepairSession | null = null;
+    if (stored) {
+      try {
+        const sessions: RepairSession[] = JSON.parse(stored);
+        const idx = sessions.findIndex(s => s.id === id);
+        if (idx >= 0) {
+          sessions[idx] = { ...sessions[idx], ...updatePayload };
+          updatedSession = sessions[idx];
+          localStorage.setItem(key, JSON.stringify(sessions));
+        }
+      } catch {}
+    }
+
+    if (!updatedSession) {
+      const existing = await this.getRepairSession(id);
+      updatedSession = { ...(existing || {}), ...updatePayload } as RepairSession;
+    }
+
+    return updatedSession;
+  },
+
+  /**
+   * Sets user-selected handover template code for a RepairSession
+   */
+  async setRepairSessionHandoverTemplate(sessionId: string, templateCode: string | null): Promise<RepairSession> {
+    return await this.updateRepairSession(sessionId, { handoverTemplateCode: templateCode });
+  },
+
+  /**
+   * Sets user-selected selection template code for a RepairSession
+   */
+  async setRepairSessionSelectionTemplate(sessionId: string, templateCode: string | null): Promise<RepairSession> {
+    return await this.updateRepairSession(sessionId, { selectionTemplateCode: templateCode });
+  },
+
+  /**
+   * Soft deletes a repair session by id in Firestore & LocalStorage
+   */
+  async deleteRepairSession(id: string): Promise<void> {
+    const currentUser = getCurrentUserSession();
+    const uid = currentUser?.uid || "unknown";
+
+    const updatePayload = {
+      isDeleted: true,
+      deletedAt: new Date().toISOString(),
+      deletedBy: uid,
+      deletedByName: currentUser?.fullName || currentUser?.username || 'Người dùng',
+      deletedByRole: currentUser?.role || 'Không xác định'
+    };
+
+    try {
+      await DataService.update('repairSessions', id, updatePayload);
+    } catch (err) {
+      console.error("Firestore 'deleteRepairSession' failed:", err);
+      throw err;
+    }
+
+    const key = 'local_repairSessions';
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      try {
+        const sessions: RepairSession[] = JSON.parse(stored);
+        const idx = sessions.findIndex(s => s.id === id);
+        if (idx >= 0) {
+          sessions[idx] = { ...sessions[idx], ...updatePayload };
+          localStorage.setItem(key, JSON.stringify(sessions));
+        }
+      } catch {}
+    }
+  },
+
+  // =========================================================================
+  // REPAIR CAMPAIGNS MODULE (FIRESTORE & WORKING CACHE)
+  // Collection Firestore: 'repairCampaigns'
+  // =========================================================================
+
+  /**
+   * Saves or creates a new repair campaign in Firestore / LocalStorage
+   */
+  async saveRepairCampaign(campaignData: Partial<RepairCampaign> & { campaignCode: string; campaignName: string }): Promise<RepairCampaign> {
+    const id = campaignData.id || `CAMPAIGN_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const creatorAudit = getCreatorAuditParams();
+    const updaterAudit = getUpdaterAuditParams();
+    const now = new Date().toISOString();
+
+    const newCampaign: RepairCampaign = {
+      id,
+      campaignCode: campaignData.campaignCode,
+      campaignName: campaignData.campaignName,
+      year: campaignData.year || new Date().getFullYear(),
+      round: campaignData.round ?? 1,
+      description: campaignData.description || '',
+      startDate: campaignData.startDate || now.split('T')[0],
+      endDate: campaignData.endDate || '',
+      status: campaignData.status || 'PLANNING',
+      createdBy: campaignData.createdBy || creatorAudit.createdBy,
+      createdAt: campaignData.createdAt || creatorAudit.createdAt,
+      updatedAt: updaterAudit.updatedAt,
+      isDeleted: campaignData.isDeleted ?? false,
+    };
+
+    try {
+      await DataService.save('repairCampaigns', newCampaign);
+    } catch (err) {
+      console.error("Firestore 'save repairCampaigns' failed:", err);
+      throw err;
+    }
+
+    const key = 'local_repairCampaigns';
+    const stored = localStorage.getItem(key);
+    let campaigns: RepairCampaign[] = [];
+    if (stored) {
+      try {
+        campaigns = JSON.parse(stored);
+      } catch {}
+    }
+    const idx = campaigns.findIndex(c => c.id === id);
+    if (idx >= 0) {
+      campaigns[idx] = newCampaign;
+    } else {
+      campaigns.push(newCampaign);
+    }
+    localStorage.setItem(key, JSON.stringify(campaigns));
+
+    return newCampaign;
+  },
+
+  /**
+   * Fetches a single repair campaign by id from Firestore / LocalStorage
+   */
+  async getRepairCampaign(id: string): Promise<RepairCampaign | null> {
+    try {
+      const doc = await DataService.get('repairCampaigns', id);
+      if (doc && !doc.isDeleted) {
+        return doc as RepairCampaign;
+      }
+    } catch (err) {
+      console.warn("Firestore 'getRepairCampaign' failed:", err);
+    }
+
+    const key = 'local_repairCampaigns';
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      try {
+        const campaigns: RepairCampaign[] = JSON.parse(stored);
+        const found = campaigns.find(c => c.id === id && !c.isDeleted);
+        if (found) return found;
+      } catch {}
+    }
+    return null;
+  },
+
+  /**
+   * Fetches all repair campaigns directly from Firestore / LocalStorage
+   */
+  async getAllRepairCampaigns(): Promise<RepairCampaign[]> {
+    let combinedCampaigns: RepairCampaign[] = [];
+
+    try {
+      const storedList = await DataService.load('repairCampaigns');
+      if (Array.isArray(storedList)) {
+        const visibleList = storedList.filter((c: any) => !c.isDeleted);
+        const mapped = visibleList.map((c: any) => {
+          let createdAtStr = new Date().toISOString();
+          if (c.createdAt && typeof c.createdAt.toDate === "function") {
+            createdAtStr = c.createdAt.toDate().toISOString();
+          } else if (typeof c.createdAt === 'string') {
+            createdAtStr = c.createdAt;
+          }
+          let updatedAtStr = createdAtStr;
+          if (c.updatedAt && typeof c.updatedAt.toDate === "function") {
+            updatedAtStr = c.updatedAt.toDate().toISOString();
+          } else if (typeof c.updatedAt === 'string') {
+            updatedAtStr = c.updatedAt;
+          }
+          return {
+            ...c,
+            createdAt: createdAtStr,
+            updatedAt: updatedAtStr
+          } as RepairCampaign;
+        });
+        combinedCampaigns.push(...mapped);
+      }
+    } catch (err) {
+      console.warn("Firestore 'repairCampaigns' fetch failed:", err);
+    }
+
+    const key = 'local_repairCampaigns';
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      try {
+        const localCampaigns: RepairCampaign[] = JSON.parse(stored);
+        const visibleLocal = localCampaigns.filter((c: any) => !c.isDeleted);
+        visibleLocal.forEach(lc => {
+          if (!combinedCampaigns.some(cc => cc.id === lc.id)) {
+            combinedCampaigns.push(lc);
+          }
+        });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // Deduplicate
+    const seenIds = new Set<string>();
+    const deduplicatedResult: RepairCampaign[] = [];
+
+    combinedCampaigns.forEach(c => {
+      if (!seenIds.has(c.id)) {
+        seenIds.add(c.id);
+        deduplicatedResult.push(c);
+      }
+    });
+
+    // Sort chronological descending
+    deduplicatedResult.sort((a, b) => {
+      const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+      const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
+
+    return deduplicatedResult;
+  },
+
+  /**
+   * Updates an existing repair campaign in Firestore / LocalStorage
+   */
+  async updateRepairCampaign(id: string, updates: Partial<RepairCampaign>): Promise<RepairCampaign> {
+    const updaterAudit = getUpdaterAuditParams();
+    const updatePayload = {
+      ...updates,
+      ...updaterAudit
+    };
+
+    try {
+      await DataService.update('repairCampaigns', id, updatePayload);
+    } catch (err) {
+      console.error("Firestore 'updateRepairCampaign' failed:", err);
+      throw err;
+    }
+
+    const key = 'local_repairCampaigns';
+    const stored = localStorage.getItem(key);
+    let updatedCampaign: RepairCampaign | null = null;
+    if (stored) {
+      try {
+        const campaigns: RepairCampaign[] = JSON.parse(stored);
+        const idx = campaigns.findIndex(c => c.id === id);
+        if (idx >= 0) {
+          campaigns[idx] = { ...campaigns[idx], ...updatePayload };
+          updatedCampaign = campaigns[idx];
+          localStorage.setItem(key, JSON.stringify(campaigns));
+        }
+      } catch {}
+    }
+
+    if (!updatedCampaign) {
+      const existing = await this.getRepairCampaign(id);
+      updatedCampaign = { ...(existing || {}), ...updatePayload } as RepairCampaign;
+    }
+
+    return updatedCampaign;
+  },
+
+  /**
+   * Soft deletes a repair campaign by id in Firestore & LocalStorage
+   */
+  async deleteRepairCampaign(id: string): Promise<void> {
+    const currentUser = getCurrentUserSession();
+    const uid = currentUser?.uid || "unknown";
+
+    const updatePayload = {
+      isDeleted: true,
+      deletedAt: new Date().toISOString(),
+      deletedBy: uid,
+      deletedByName: currentUser?.fullName || currentUser?.username || 'Người dùng',
+      deletedByRole: currentUser?.role || 'Không xác định'
+    };
+
+    try {
+      await DataService.update('repairCampaigns', id, updatePayload);
+    } catch (err) {
+      console.error("Firestore 'deleteRepairCampaign' failed:", err);
+      throw err;
+    }
+
+    const key = 'local_repairCampaigns';
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      try {
+        const campaigns: RepairCampaign[] = JSON.parse(stored);
+        const idx = campaigns.findIndex(c => c.id === id);
+        if (idx >= 0) {
+          campaigns[idx] = { ...campaigns[idx], ...updatePayload };
+          localStorage.setItem(key, JSON.stringify(campaigns));
+        }
+      } catch {}
+    }
+  },
+
+  /**
+   * Closes a repair campaign (sets status to 'CLOSED') in Firestore & LocalStorage
+   */
+  async closeRepairCampaign(id: string): Promise<RepairCampaign> {
+    return await this.updateRepairCampaign(id, { status: 'CLOSED' });
+  },
+
+  /**
+   * Opens a repair campaign (sets status to 'OPEN') in Firestore & LocalStorage
+   */
+  async openRepairCampaign(id: string): Promise<RepairCampaign> {
+    return await this.updateRepairCampaign(id, { status: 'OPEN' });
   }
 };

@@ -1,3 +1,4 @@
+import { normalizeNFC } from '../utils/stringUtils';
 import React, { useState, useEffect } from 'react';
 import { 
   FilePlus2, 
@@ -187,8 +188,8 @@ export const ReceiveForm: React.FC<ReceiveFormProps> = ({
               <input
                 id="doc-report-number"
                 type="text"
-                value={reportNumber}
-                onChange={(e) => setReportNumber(e.target.value)}
+                value={typeof (reportNumber) === 'string' ? (reportNumber).normalize('NFC') : (reportNumber)}
+                onChange={(e) => setReportNumber(e.target.value.normalize('NFC'))}
                 className="w-full bg-stone-50 border border-stone-300 p-2.5 rounded-lg text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:bg-white font-mono"
               />
             </div>
@@ -197,8 +198,8 @@ export const ReceiveForm: React.FC<ReceiveFormProps> = ({
               <input
                 id="doc-receive-date"
                 type="date"
-                value={receiveDate}
-                onChange={(e) => setReceiveDate(e.target.value)}
+                value={typeof (receiveDate) === 'string' ? (receiveDate).normalize('NFC') : (receiveDate)}
+                onChange={(e) => setReceiveDate(e.target.value.normalize('NFC'))}
                 className="w-full bg-stone-50 border border-stone-300 p-2.5 rounded-lg text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:bg-white font-sans"
               />
             </div>
@@ -208,8 +209,8 @@ export const ReceiveForm: React.FC<ReceiveFormProps> = ({
                 id="doc-giver"
                 type="text"
                 placeholder="ví dụ: THUẬN VĂN AN (Đại uý)..."
-                value={giver}
-                onChange={(e) => setGiver(e.target.value)}
+                value={typeof (giver) === 'string' ? (giver).normalize('NFC') : (giver)}
+                onChange={(e) => setGiver(e.target.value.normalize('NFC'))}
                 className="w-full bg-stone-50 border border-stone-300 p-2.5 rounded-lg text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:bg-white font-sans"
               />
             </div>
@@ -219,8 +220,8 @@ export const ReceiveForm: React.FC<ReceiveFormProps> = ({
                 id="doc-receiver"
                 type="text"
                 placeholder="ví dụ: ĐỖ MINH LONG (Kỹ thuật viên)..."
-                value={receiver}
-                onChange={(e) => setReceiver(e.target.value)}
+                value={typeof (receiver) === 'string' ? (receiver).normalize('NFC') : (receiver)}
+                onChange={(e) => setReceiver(e.target.value.normalize('NFC'))}
                 className="w-full bg-stone-50 border border-stone-300 p-2.5 rounded-lg text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:bg-white font-sans"
               />
             </div>
@@ -242,8 +243,8 @@ export const ReceiveForm: React.FC<ReceiveFormProps> = ({
               <input
                 id="doc-plate"
                 type="text"
-                value={plateNumber}
-                onChange={(e) => setPlateNumber(e.target.value)}
+                value={typeof (plateNumber) === 'string' ? (plateNumber).normalize('NFC') : (plateNumber)}
+                onChange={(e) => setPlateNumber(e.target.value.normalize('NFC'))}
                 className="w-full bg-stone-50 border border-stone-300 p-2.5 rounded-lg text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:bg-white font-mono uppercase font-semibold"
               />
             </div>
@@ -253,8 +254,8 @@ export const ReceiveForm: React.FC<ReceiveFormProps> = ({
                 id="doc-brand"
                 type="text"
                 placeholder="ví dụ: Ural-4320, KamAZ..."
-                value={brand}
-                onChange={(e) => setBrand(e.target.value)}
+                value={typeof (brand) === 'string' ? (brand).normalize('NFC') : (brand)}
+                onChange={(e) => setBrand(e.target.value.normalize('NFC'))}
                 className="w-full bg-stone-50 border border-stone-300 p-2.5 rounded-lg text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:bg-white font-sans"
               />
             </div>
@@ -264,8 +265,8 @@ export const ReceiveForm: React.FC<ReceiveFormProps> = ({
                 id="doc-type"
                 type="text"
                 placeholder="ví dụ: Xe thiết giáp, Xe tải việt dã..."
-                value={vehicleType}
-                onChange={(e) => setVehicleType(e.target.value)}
+                value={typeof (vehicleType) === 'string' ? (vehicleType).normalize('NFC') : (vehicleType)}
+                onChange={(e) => setVehicleType(e.target.value.normalize('NFC'))}
                 className="w-full bg-stone-50 border border-stone-300 p-2.5 rounded-lg text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:bg-white font-sans"
               />
             </div>
@@ -273,8 +274,8 @@ export const ReceiveForm: React.FC<ReceiveFormProps> = ({
               <label className="block text-xs font-semibold text-stone-600 mb-1">Nhóm xe phân loại</label>
               <select
                 id="doc-group"
-                value={vehicleGroup}
-                onChange={(e) => setVehicleGroup(e.target.value)}
+                value={typeof (vehicleGroup) === 'string' ? (vehicleGroup).normalize('NFC') : (vehicleGroup)}
+                onChange={(e) => setVehicleGroup(e.target.value.normalize('NFC'))}
                 className="w-full bg-stone-50 border border-stone-300 p-2.5 rounded-lg text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:bg-white font-sans"
               >
                 <option value="Xe vận tải quân sự">Xe vận tải quân sự</option>
@@ -289,8 +290,8 @@ export const ReceiveForm: React.FC<ReceiveFormProps> = ({
                 id="doc-chassis"
                 type="text"
                 placeholder="chữ số và chữ cái viết hoa"
-                value={chassisNumber}
-                onChange={(e) => setChassisNumber(e.target.value)}
+                value={typeof (chassisNumber) === 'string' ? (chassisNumber).normalize('NFC') : (chassisNumber)}
+                onChange={(e) => setChassisNumber(e.target.value.normalize('NFC'))}
                 className="w-full bg-stone-50 border border-stone-300 p-2.5 rounded-lg text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:bg-white font-mono uppercase"
               />
             </div>
@@ -300,8 +301,8 @@ export const ReceiveForm: React.FC<ReceiveFormProps> = ({
                 id="doc-engine-no"
                 type="text"
                 placeholder="ký số động cơ"
-                value={engineNumber}
-                onChange={(e) => setEngineNumber(e.target.value)}
+                value={typeof (engineNumber) === 'string' ? (engineNumber).normalize('NFC') : (engineNumber)}
+                onChange={(e) => setEngineNumber(e.target.value.normalize('NFC'))}
                 className="w-full bg-stone-50 border border-stone-300 p-2.5 rounded-lg text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:bg-white font-mono uppercase"
               />
             </div>
@@ -328,8 +329,8 @@ export const ReceiveForm: React.FC<ReceiveFormProps> = ({
                   <input
                     id={`input-${sectKey}`}
                     type="text"
-                    value={value}
-                    onChange={(e) => handleStatusChange(sectKey as keyof TechnicalSections, e.target.value)}
+                    value={typeof (value) === 'string' ? (value).normalize('NFC') : (value)}
+                    onChange={(e) => handleStatusChange(sectKey as keyof TechnicalSections, e.target.value.normalize('NFC'))}
                     placeholder="Nhập tình trạng chi tiết (ví dụ: gạt nước hỏng, bít tông mòn...)"
                     className="w-full bg-stone-50 border border-stone-350 p-2.5 rounded-lg text-sm text-stone-850 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:bg-white font-sans transition-all"
                   />
@@ -355,8 +356,8 @@ export const ReceiveForm: React.FC<ReceiveFormProps> = ({
                 id="doc-note"
                 rows={8}
                 placeholder="Nhập chi tiết các lỗi phát sinh thực tế khi kiểm nghiệm xe..."
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
+                value={typeof (note) === 'string' ? (note).normalize('NFC') : (note)}
+                onChange={(e) => setNote(e.target.value.normalize('NFC'))}
                 className="w-full bg-stone-50 border border-stone-300 p-3 rounded-lg text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:bg-white font-sans leading-relaxed resize-none"
               />
             </div>
@@ -367,8 +368,8 @@ export const ReceiveForm: React.FC<ReceiveFormProps> = ({
                 id="doc-comment"
                 rows={8}
                 placeholder="Ý kiến chỉ đạo chỉ huy, đề nghị sửa chữa của Đơn vị hoặc ý kiến Trưởng xe..."
-                value={unitComment}
-                onChange={(e) => setUnitComment(e.target.value)}
+                value={typeof (unitComment) === 'string' ? (unitComment).normalize('NFC') : (unitComment)}
+                onChange={(e) => setUnitComment(e.target.value.normalize('NFC'))}
                 className="w-full bg-stone-50 border border-stone-300 p-3 rounded-lg text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:bg-white font-sans leading-relaxed resize-none"
               />
             </div>

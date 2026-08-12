@@ -77,8 +77,8 @@ export const SearchSection: React.FC<SearchSectionProps> = ({
               id="search-input"
               type="text"
               placeholder=""
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
+              value={typeof (searchInput) === 'string' ? (searchInput).normalize('NFC') : (searchInput)}
+              onChange={(e) => setSearchInput(e.target.value.normalize('NFC'))}
               className="w-full pl-11 pr-4 py-3.5 bg-stone-50 border border-stone-300 rounded-xl text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:bg-white text-base font-medium transition-all"
             />
           </div>

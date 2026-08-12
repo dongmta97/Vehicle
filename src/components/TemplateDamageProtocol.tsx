@@ -69,7 +69,7 @@ export const TemplateDamageProtocol: React.FC<TemplateDamageProtocolProps> = ({
 
   // 2. Handle template selection change and populate/auto-fill variables
   const handleTemplateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const name = e.target.value;
+    const name = e.target.value.normalize('NFC');
     setSelectedTemplateName(name);
     
     // Auto fill fields for chosen template
@@ -354,13 +354,13 @@ export const TemplateDamageProtocol: React.FC<TemplateDamageProtocolProps> = ({
               
               <select
                 id="template-dropdown"
-                value={selectedTemplateName}
+                value={typeof (selectedTemplateName) === 'string' ? (selectedTemplateName).normalize('NFC') : (selectedTemplateName)}
                 onChange={handleTemplateChange}
                 className="w-full bg-stone-50 border-2 border-stone-200 rounded-lg py-2 px-3 text-sm focus:border-emerald-850 outline-none font-medium text-stone-800 transition-colors"
               >
                 <option value="">-- [Chọn mẫu biên bản] --</option>
                 {templates.map(t => (
-                  <option key={t.fileName} value={t.fileName}>
+                  <option key={t.fileName} value={typeof (t.fileName) === 'string' ? (t.fileName).normalize('NFC') : (t.fileName)}>
                     {t.fileName} - {t.title}
                   </option>
                 ))}
@@ -397,8 +397,8 @@ export const TemplateDamageProtocol: React.FC<TemplateDamageProtocolProps> = ({
                             </label>
                             <textarea
                               rows={3}
-                              value={value}
-                              onChange={(e) => handleInputChange(variable, e.target.value)}
+                              value={typeof (value) === 'string' ? (value).normalize('NFC') : (value)}
+                              onChange={(e) => handleInputChange(variable, e.target.value.normalize('NFC'))}
                               placeholder={`Nhập ${label.toLowerCase()}... (ví dụ: bị mòn pít-tông, rơ-le đánh lửa rạn nứt)`}
                               className="w-full bg-stone-55 border border-stone-200 rounded-lg p-3 text-xs focus:border-emerald-800 outline-none transition-colors"
                             />
@@ -413,8 +413,8 @@ export const TemplateDamageProtocol: React.FC<TemplateDamageProtocolProps> = ({
                           </label>
                           <input
                             type="text"
-                            value={value}
-                            onChange={(e) => handleInputChange(variable, e.target.value)}
+                            value={typeof (value) === 'string' ? (value).normalize('NFC') : (value)}
+                            onChange={(e) => handleInputChange(variable, e.target.value.normalize('NFC'))}
                             placeholder={`Điền ${label.toLowerCase()}...`}
                             className="w-full bg-stone-55 border border-stone-200 rounded-lg py-2 px-3 text-xs focus:border-emerald-800 outline-none transition-colors"
                           />

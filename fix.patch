@@ -1,0 +1,13 @@
+--- src/components/InspectionTab.tsx
++++ src/components/InspectionTab.tsx
+@@ -988,6 +988,9 @@
+                 onSaveSuccess={async () => {
+                   await loadAllDamageProtocols();
+                 }}
++              />
++            ) : (
++              <div className="flex-1 flex flex-col p-2">
+-                      <p className="text-xs text-red-600 mt-2 font-medium italic">Hồ sơ sửa chữa đã đóng, không thể thay đổi mẫu biên bản.</p>
+-                    )}
+-                  </div>
+-                )}

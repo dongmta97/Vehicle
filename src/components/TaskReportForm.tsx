@@ -1,3 +1,4 @@
+import { normalizeNFC } from '../utils/stringUtils';
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Save, FileDown, Printer, Plus, Trash2 } from 'lucide-react';
 import { getCurrentUserSession } from '../services/dbService';
@@ -11,13 +12,14 @@ const DEFAULT_TASKS = [
 ];
 
 interface Props {
+  targetSessionId?: string;
   existingFormId?: string;
   onSaved?: (payload?: any) => void;
   onClose: () => void;
   initialData?: any;
 }
 
-export const TaskReportForm: React.FC<Props> = ({ existingFormId, initialData, onSaved, onClose }) => {
+export const TaskReportForm: React.FC<Props> = ({ existingFormId, targetSessionId, initialData, onSaved, onClose }) => {
   const [zoom, setZoom] = useState(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 800) {
       return Math.max(30, Math.floor((window.innerWidth) / 7.94));
@@ -133,13 +135,14 @@ export const TaskReportForm: React.FC<Props> = ({ existingFormId, initialData, o
       } catch (err) {}
 
       const payload = {
+        repairSessionId: targetSessionId || (docExists ? existingDoc?.repairSessionId : null),
         id: docId,
         vehicleId: 'NA',
         module: 'OPERATIONS',
         templateType: 'TASK_REPORT',
         templateName: 'Báo cáo kết quả thực hiện nhiệm vụ',
         stageName: 'Báo cáo kết quả',
-        formData: formData,
+        formData: normalizeNFC(formData),
         isDeleted: false,
         createdBy: docExists && existingDoc?.createdBy ? existingDoc.createdBy : (currentUser?.uid || currentUser?.username || 'unknown'),
         createdByName: docExists && existingDoc?.createdByName ? existingDoc.createdByName : (currentUser?.fullName || 'unknown'),
@@ -148,9 +151,9 @@ export const TaskReportForm: React.FC<Props> = ({ existingFormId, initialData, o
       };
 
       if (docExists) {
-        await DataService.update('repairForms', docId, payload);
+        await DataService.update('repairForms', docId, normalizeNFC(payload));
       } else {
-        await DataService.save('repairForms', payload);
+        await DataService.save('repairForms', normalizeNFC(payload));
       }
       
       const storeKey = `local_TASK_REPORT`;
@@ -198,7 +201,7 @@ export const TaskReportForm: React.FC<Props> = ({ existingFormId, initialData, o
           deletedByName: currentUser?.fullName || currentUser?.username || "Người dùng",
           deletedByRole: currentUser?.role || "Không xác định",
         };
-        await DataService.update('repairForms', docId, updatePayload);
+        await DataService.update('repairForms', docId, normalizeNFC(updatePayload));
       } catch (err) {
         console.warn('Could not update firebase for delete, continuing locally:', err);
       }
@@ -356,14 +359,14 @@ export const TaskReportForm: React.FC<Props> = ({ existingFormId, initialData, o
             <div className="text-center font-bold flex flex-col items-center">
                <input 
                   type="text" 
-                  value={formData.unit}
-                  onChange={(e) => setFormData({...formData, unit: e.target.value})}
+                  value={typeof (formData.unit) === 'string' ? (formData.unit).normalize('NFC') : (formData.unit)}
+                  onChange={(e) => setFormData({...formData, unit: e.target.value.normalize('NFC')})}
                   className="text-base text-center bg-transparent outline-none m-0 leading-tight border-b border-dotted border-transparent hover:border-black focus:border-black transition-colors min-w-[200px]" 
                 />
                <input 
                   type="text" 
-                  value={formData.subUnit}
-                  onChange={(e) => setFormData({...formData, subUnit: e.target.value})}
+                  value={typeof (formData.subUnit) === 'string' ? (formData.subUnit).normalize('NFC') : (formData.subUnit)}
+                  onChange={(e) => setFormData({...formData, subUnit: e.target.value.normalize('NFC')})}
                   className="text-base text-center block bg-transparent outline-none m-0 mt-1 leading-tight border-b border-dotted border-transparent hover:border-black focus:border-black transition-colors min-w-[200px]" 
                 />
             </div>
@@ -379,8 +382,8 @@ export const TaskReportForm: React.FC<Props> = ({ existingFormId, initialData, o
                <span className="whitespace-nowrap italic">Ngày lập:</span>
                <input 
                   type="text" 
-                  value={formData.createdDate}
-                  onChange={(e) => setFormData({...formData, createdDate: e.target.value})}
+                  value={typeof (formData.createdDate) === 'string' ? (formData.createdDate).normalize('NFC') : (formData.createdDate)}
+                  onChange={(e) => setFormData({...formData, createdDate: e.target.value.normalize('NFC')})}
                   className="border-b border-dotted border-black flex-1 bg-transparent outline-none pb-0 font-bold" 
                />
             </div>
@@ -388,8 +391,8 @@ export const TaskReportForm: React.FC<Props> = ({ existingFormId, initialData, o
                <span className="whitespace-nowrap italic">Người lập:</span>
                <input 
                   type="text" 
-                  value={formData.createdBy}
-                  onChange={(e) => setFormData({...formData, createdBy: e.target.value})}
+                  value={typeof (formData.createdBy) === 'string' ? (formData.createdBy).normalize('NFC') : (formData.createdBy)}
+                  onChange={(e) => setFormData({...formData, createdBy: e.target.value.normalize('NFC')})}
                   className="border-b border-dotted border-black flex-1 bg-transparent outline-none pb-0 font-bold" 
                />
             </div>
@@ -410,16 +413,16 @@ export const TaskReportForm: React.FC<Props> = ({ existingFormId, initialData, o
                     <tr className="group" key={item.id || index}>
                       <td className="border border-black p-0 align-top">
                         <AutoResizeTextarea 
-                          value={item.date || ''}
-                          onChange={(e) => handleTaskChange(index, 'date', e.target.value)}
+                          value={typeof (item.date || '') === 'string' ? (item.date || '').normalize('NFC') : (item.date || '')}
+                          onChange={(e) => handleTaskChange(index, 'date', e.target.value.normalize('NFC'))}
                           className="w-full h-full min-h-[48px] bg-transparent outline-none px-2 py-2 text-center text-emerald-800 print:text-black font-semibold"
                           placeholder="Thứ..."
                         />
                       </td>
                       <td className="border border-black p-0 align-top">
                         <AutoResizeTextarea 
-                          value={item.content || ''}
-                          onChange={(e) => handleTaskChange(index, 'content', e.target.value)}
+                          value={typeof (item.content || '') === 'string' ? (item.content || '').normalize('NFC') : (item.content || '')}
+                          onChange={(e) => handleTaskChange(index, 'content', e.target.value.normalize('NFC'))}
                           className="w-full h-full min-h-[48px] bg-transparent outline-none px-2 py-2 text-emerald-800 print:text-black"
                           placeholder="Nhập nội dung..."
                         />
@@ -497,14 +500,14 @@ export const TaskReportForm: React.FC<Props> = ({ existingFormId, initialData, o
             <div className="flex flex-col items-center">
               <input 
                  type="text" 
-                 value={formData.approverTitle}
-                 onChange={(e) => setFormData({...formData, approverTitle: e.target.value})}
+                 value={typeof (formData.approverTitle) === 'string' ? (formData.approverTitle).normalize('NFC') : (formData.approverTitle)}
+                 onChange={(e) => setFormData({...formData, approverTitle: e.target.value.normalize('NFC')})}
                  className="font-bold text-[15px] mb-24 uppercase text-center bg-transparent outline-none m-0 leading-tight border-b border-dotted border-transparent hover:border-black focus:border-black transition-colors min-w-[200px]" 
                />
               <input 
                  type="text" 
-                 value={formData.approverName}
-                 onChange={(e) => setFormData({...formData, approverName: e.target.value})}
+                 value={typeof (formData.approverName) === 'string' ? (formData.approverName).normalize('NFC') : (formData.approverName)}
+                 onChange={(e) => setFormData({...formData, approverName: e.target.value.normalize('NFC')})}
                  className="font-bold text-[15px] text-center bg-transparent outline-none m-0 leading-tight border-b border-dotted border-transparent hover:border-black focus:border-black transition-colors min-w-[200px]" 
                />
             </div>

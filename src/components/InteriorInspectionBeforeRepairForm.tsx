@@ -1,3 +1,4 @@
+import { normalizeNFC } from '../utils/stringUtils';
 import { canEditDocument } from '../services/ownershipService';
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Save, FileDown, Printer, Plus } from 'lucide-react';
@@ -7,6 +8,7 @@ import { DataService } from '../firebase';
 import { AutoResizeTextarea } from './AutoResizeTextarea';
 
 interface Props {
+  targetSessionId?: string;
   vehicle?: Vehicle | null;
   existingFormId?: string;
   templateName?: string;
@@ -18,27 +20,15 @@ interface Props {
 }
 
 const INTERIOR_INSPECTION_ITEMS = [
-  // I. GHẾ VÀ TRANG BỊ AN TOÀN
-  { id: 1001, category: 'I. GHẾ VÀ TRANG BỊ AN TOÀN', content: 'Ghế lái, ghế phụ và các hàng ghế sau', unit: '-', requirement: 'Không rách, cơ cấu trượt, gập tốt' },
-  { id: 1002, category: 'I. GHẾ VÀ TRANG BỊ AN TOÀN', content: 'Dây đai an toàn các vị trí', unit: '-', requirement: 'Kéo nhả mượt, khóa đai giữ chặt' },
-  { id: 1003, category: 'I. GHẾ VÀ TRANG BỊ AN TOÀN', content: 'Gối tựa đầu, tựa tay', unit: '-', requirement: 'Đầy đủ, điều chỉnh dễ dàng' },
-
-  // II. BẢNG ĐIỀU KHIỂN VÀ TIỆN NGHI
-  { id: 1101, category: 'II. BẢNG ĐIỀU KHIỂN VÀ TIỆN NGHI', content: 'Taplo và các ốp nhựa xung quanh', unit: '-', requirement: 'Không nứt vỡ, bạc màu, bắt chặt' },
-  { id: 1102, category: 'II. BẢNG ĐIỀU KHIỂN VÀ TIỆN NGHI', content: 'Tay nắm cửa, tay vịn trần xe', unit: '-', requirement: 'Chắc chắn, không nứt nẻ' },
-  { id: 1103, category: 'II. BẢNG ĐIỀU KHIỂN VÀ TIỆN NGHI', content: 'Hệ thống khóa cửa, chốt an toàn', unit: '-', requirement: 'Khóa/mở nhẹ nhàng, an toàn' },
-  { id: 1104, category: 'II. BẢNG ĐIỀU KHIỂN VÀ TIỆN NGHI', content: 'Hệ thống kính nâng hạ cửa sổ', unit: '-', requirement: 'Lên xuống êm kính, kín khít' },
-  { id: 1105, category: 'II. BẢNG ĐIỀU KHIỂN VÀ TIỆN NGHI', content: 'Hệ thống điều hòa cabin (Gió, nhiệt độ)', unit: '-', requirement: 'Mát sâu, quạt gió êm' },
-  { id: 1106, category: 'II. BẢNG ĐIỀU KHIỂN VÀ TIỆN NGHI', content: 'Hệ thống âm thanh, màn hình giải trí', unit: '-', requirement: 'Hoạt động tốt, phát tiếng rõ' },
-
-  // III. KHÔNG GIAN NỘI THẤT VÀ VỆ SINH
-  { id: 1201, category: 'III. KHÔNG GIAN NỘI THẤT VÀ VỆ SINH', content: 'Đèn chiếu sáng trần, đèn đọc sách', unit: '-', requirement: 'Sáng bình thường, công tắc nhạy' },
-  { id: 1202, category: 'III. KHÔNG GIAN NỘI THẤT VÀ VỆ SINH', content: 'Trần xe, tấm che nắng', unit: '-', requirement: 'Không võng, không ố bẩn' },
-  { id: 1203, category: 'III. KHÔNG GIAN NỘI THẤT VÀ VỆ SINH', content: 'Sàn xe, thảm lót chân', unit: '-', requirement: 'Sạch sẽ, không ẩm mốc, rách' },
-  { id: 1204, category: 'III. KHÔNG GIAN NỘI THẤT VÀ VỆ SINH', content: 'Gương chiếu hậu trong xe và các hộc đồ', unit: '-', requirement: 'Gương rõ nét, hộc đồ đóng mở tốt' }
+  { id: 1001, category: '', stt: '1', content: 'Số lượng ghế', unit: 'Cái', requirement: 'Đầy đủ 11 ghế chính, đúng\nmàu và qui cách, đường\nmay chắc, đều.' },
+  { id: 1002, category: '', stt: '2', content: 'Bạt xe', unit: 'Cái', requirement: 'Đầy đủ 01 bộ, căng phẳng,\nvừa vặn, khoen cài, dây\nbuộc phải chắc; đúng vị trí.' },
+  { id: 1003, category: '', stt: '3', content: 'Táp-pi', unit: 'Bộ', requirement: 'Đủ đồng bộ theo cửa xe ,\nphủ kín và áp sát sàn xe.' },
+  { id: 1004, category: '', stt: '4', content: 'Gương chiếu hậu', unit: 'Cái', requirement: 'Đủ 02 cái, trong sáng, phản\nchiếu rõ và xa, giá gương\nchắc chắn.' },
+  { id: 1005, category: '', stt: '5', content: 'Tấm che nắng, đệm cao su\nghế tựa sau.', unit: 'Cái', requirement: 'Đầy đủ 02 chắn nắng' },
+  { id: 1006, category: '', stt: '6', content: 'Trần xe', unit: '', requirement: 'Phẳng, không rách, sạch sẽ,\nkín các mép.' },
 ];
 
-export const InteriorInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, existingFormId, templateName, stageName, templateType, initialData, onSaved, onClose }) => {
+export const InteriorInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, existingFormId, targetSessionId, templateName, stageName, templateType, initialData, onSaved, onClose }) => {
   const [zoom, setZoom] = useState(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 800) {
       return Math.max(30, Math.floor((window.innerWidth) / 7.94));
@@ -60,7 +50,7 @@ export const InteriorInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, e
       xxNumber2: '',
       sheetNumber: '',
       items: INTERIOR_INSPECTION_ITEMS.map(item => ({ ...item, actual: '' })),
-      conclusion: ''
+      conclusion: 'Tình trạng nội thất trước khi vào sửa chữa đã được kiểm tra đúng Quy trình công nghệ.'
     };
   });
 
@@ -171,7 +161,7 @@ export const InteriorInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, e
             xxNumber2: '',
             sheetNumber: '',
             items: INTERIOR_INSPECTION_ITEMS.map(item => ({ ...item, actual: '' })),
-            conclusion: ''
+            conclusion: 'Tình trạng nội thất trước khi vào sửa chữa đã được kiểm tra đúng Quy trình công nghệ.'
           });
         }
       }
@@ -201,12 +191,13 @@ export const InteriorInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, e
       }
 
       const payload = {
+        repairSessionId: targetSessionId || (docExists ? existingDoc?.repairSessionId : null),
         id: docId,
         vehicleId: formVehicleId,
         templateType: templateType || 'INTERIOR_PRE_REPAIR',
         templateName: docExists && existingDoc?.templateName ? existingDoc.templateName : resolvedTemplateName,
         stageName: docExists && existingDoc?.stageName ? existingDoc.stageName : resolvedStageName,
-        formData: formData,
+        formData: normalizeNFC(formData),
         isDeleted: false,
         createdBy: docExists && existingDoc?.createdBy ? existingDoc.createdBy : (currentUser?.uid || currentUser?.username || 'unknown'),
         createdByName: docExists && existingDoc?.createdByName ? existingDoc.createdByName : (currentUser?.fullName || 'unknown'),
@@ -215,9 +206,9 @@ export const InteriorInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, e
       };
 
       if (docExists) {
-        await DataService.update('repairForms', docId, payload);
+        await DataService.update('repairForms', docId, normalizeNFC(payload));
       } else {
-        await DataService.save('repairForms', payload);
+        await DataService.save('repairForms', normalizeNFC(payload));
       }
       
       console.log("SAVE INTERIOR TEMPLATE", payload.templateType);
@@ -299,7 +290,7 @@ export const InteriorInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, e
           deletedByName: currentUser?.fullName || currentUser?.username || "Người dùng",
           deletedByRole: currentUser?.role || "Không xác định",
         };
-        await DataService.update('repairForms', docId, updatePayload);
+        await DataService.update('repairForms', docId, normalizeNFC(updatePayload));
       } catch (err) {
         console.warn('Could not update firebase for delete, continuing locally:', err);
       }
@@ -474,14 +465,14 @@ export const InteriorInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, e
               <p className="text-base m-0 leading-tight">CỤC HC - KT</p>
               <p className="text-base m-0 leading-tight">Tiểu đoàn 30</p>
               <p className="text-base m-0 leading-tight">Đại đội S/C xe máy</p>
-              <p className="text-base m-0 leading-tight">Tổ S/C Máy, gầm</p>
+              <p className="text-base m-0 leading-tight">Tổ S/C GCCK</p>
             </div>
             <div className="text-right">
             </div>
           </div>
 
           <div className="text-center mb-6">
-            <h1 className="text-xl font-bold uppercase m-0 leading-tight mb-2">PHIẾU KIỂM TRA: Số 1</h1>
+            <h1 className="text-xl font-bold uppercase m-0 leading-tight mb-2">PHIẾU KIỂM TRA: Số 5</h1>
           </div>
 
           <div className="mb-6 grid grid-cols-2 gap-4 text-[15px] leading-relaxed">
@@ -490,8 +481,8 @@ export const InteriorInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, e
                 <span className="whitespace-nowrap">Tên TBKT:</span>
                 <input 
                   type="text" 
-                  value={formData.vehicleName}
-                  onChange={(e) => setFormData({...formData, vehicleName: e.target.value})}
+                  value={typeof (formData.vehicleName) === 'string' ? (formData.vehicleName).normalize('NFC') : (formData.vehicleName)}
+                  onChange={(e) => setFormData({...formData, vehicleName: e.target.value.normalize('NFC')})}
                   className="border-b border-dotted border-black flex-1 bg-transparent outline-none pb-0 px-2 font-bold" 
                 />
                 <button
@@ -542,8 +533,8 @@ export const InteriorInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, e
                 <span className="whitespace-nowrap">Số hiệu:</span>
                 <input 
                   type="text" 
-                  value={formData.vehicleNumber}
-                  onChange={(e) => setFormData({...formData, vehicleNumber: e.target.value})}
+                  value={typeof (formData.vehicleNumber) === 'string' ? (formData.vehicleNumber).normalize('NFC') : (formData.vehicleNumber)}
+                  onChange={(e) => setFormData({...formData, vehicleNumber: e.target.value.normalize('NFC')})}
                   className="border-b border-dotted border-black flex-1 bg-transparent outline-none pb-0 px-2 font-bold" 
                 />
               </div>
@@ -551,8 +542,8 @@ export const InteriorInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, e
                 <span className="whitespace-nowrap">Số XX:</span>
                 <input 
                   type="text" 
-                  value={formData.xxNumber1}
-                  onChange={(e) => setFormData({...formData, xxNumber1: e.target.value})}
+                  value={typeof (formData.xxNumber1) === 'string' ? (formData.xxNumber1).normalize('NFC') : (formData.xxNumber1)}
+                  onChange={(e) => setFormData({...formData, xxNumber1: e.target.value.normalize('NFC')})}
                   className="border-b border-dotted border-black flex-1 bg-transparent outline-none pb-0 px-2 font-bold" 
                 />
               </div>
@@ -567,8 +558,8 @@ export const InteriorInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, e
                 <span className="whitespace-nowrap">Số hiệu:</span>
                 <input 
                   type="text" 
-                  value={formData.stageNumber}
-                  onChange={(e) => setFormData({...formData, stageNumber: e.target.value})}
+                  value={typeof (formData.stageNumber) === 'string' ? (formData.stageNumber).normalize('NFC') : (formData.stageNumber)}
+                  onChange={(e) => setFormData({...formData, stageNumber: e.target.value.normalize('NFC')})}
                   className="border-b border-dotted border-black flex-1 bg-transparent outline-none pb-0 px-2 font-bold" 
                 />
               </div>
@@ -576,8 +567,8 @@ export const InteriorInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, e
                 <span className="whitespace-nowrap">Số XX:</span>
                 <input 
                   type="text" 
-                  value={formData.xxNumber2}
-                  onChange={(e) => setFormData({...formData, xxNumber2: e.target.value})}
+                  value={typeof (formData.xxNumber2) === 'string' ? (formData.xxNumber2).normalize('NFC') : (formData.xxNumber2)}
+                  onChange={(e) => setFormData({...formData, xxNumber2: e.target.value.normalize('NFC')})}
                   className="border-b border-dotted border-black flex-1 bg-transparent outline-none pb-0 px-2 font-bold" 
                 />
               </div>
@@ -585,8 +576,8 @@ export const InteriorInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, e
                 <span className="whitespace-nowrap">Tờ số:</span>
                 <input 
                   type="text" 
-                  value={formData.sheetNumber}
-                  onChange={(e) => setFormData({...formData, sheetNumber: e.target.value})}
+                  value={typeof (formData.sheetNumber) === 'string' ? (formData.sheetNumber).normalize('NFC') : (formData.sheetNumber)}
+                  onChange={(e) => setFormData({...formData, sheetNumber: e.target.value.normalize('NFC')})}
                   className="border-b border-dotted border-black flex-1 bg-transparent outline-none pb-0 px-2 font-bold" 
                 />
               </div>
@@ -602,7 +593,8 @@ export const InteriorInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, e
                   <th className="border border-black px-2 py-2 text-center w-24 font-bold">Đơn vị đo</th>
                   <th className="border border-black px-2 py-2 text-center w-40 font-bold">Yêu cầu</th>
                   <th className="border border-black px-2 py-2 text-center w-48 font-bold">Thực tế</th>
-                </tr>
+                  <th className="border border-black px-2 py-2 text-center w-32 font-bold">Ngày thực hiện</th>
+                  </tr>
               </thead>
               <tbody>
                 {(() => {
@@ -622,29 +614,42 @@ export const InteriorInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, e
                           </tr>
                         )}
                         <tr className="flex flex-col sm:table-row hover:bg-stone-50/50 transition-colors border-b-2 sm:border-b border-stone-300 sm:border-black mb-2 sm:mb-0 h-auto sm:h-auto">
-                          <td className="hidden sm:table-cell border border-black px-2 py-2 text-center">{index + 1}</td>
+                          <td className="hidden sm:table-cell border border-black px-2 py-2 text-center">{item.stt || (index + 1)}</td>
                           <td className="border-t border-x sm:border-y-0 sm:border-l-0 sm:border-r border-stone-300 sm:border-black p-2.5 sm:px-2 font-medium bg-stone-100 sm:bg-transparent">
-                            <span className="sm:hidden font-bold mr-1">{index + 1}.</span>
-                            {item.content}
+                            <span className="sm:hidden font-bold mr-1">{item.stt || (index + 1)}.</span>
+                            <span className="whitespace-pre-line">{item.content}</span>
                           </td>
                           <td className="border-x border-b sm:border border-stone-300 sm:border-black p-2 sm:p-2 flex sm:table-cell items-center justify-between bg-white sm:bg-transparent">
                             <span className="sm:hidden text-xs text-stone-500 font-medium ml-1">Đơn vị đo</span>
-                            <span className="text-right sm:text-center text-stone-800">{item.unit}</span>
+                            <span className="text-right sm:text-center text-stone-800 whitespace-pre-line">{item.unit}</span>
                           </td>
                           <td className="border-x border-b sm:border border-stone-300 sm:border-black p-2 flex sm:table-cell items-center justify-between bg-white sm:bg-transparent">
                             <span className="sm:hidden text-xs text-stone-500 font-medium ml-1">Yêu cầu</span>
-                            <span className="text-right sm:text-center text-stone-800 font-medium sm:font-normal">{item.requirement}</span>
+                            <span className="text-right sm:text-center text-stone-800 font-medium sm:font-normal whitespace-pre-line">{item.requirement}</span>
                           </td>
                           <td className="border-x border-b sm:border border-stone-300 sm:border-black p-1 flex sm:table-cell flex-col sm:flex-row items-stretch sm:items-center justify-between bg-white sm:bg-transparent">
                             <span className="sm:hidden text-xs text-stone-500 font-medium ml-2 mt-1 mb-1">Thực tế</span>
 
                             <AutoResizeTextarea 
-                              value={item.actual || ''}
-                              onChange={(e) => handleItemChange(index, e.target.value)}
+                              value={typeof (item.actual || '') === 'string' ? (item.actual || '').normalize('NFC') : (item.actual || '')}
+                              onChange={(e) => handleItemChange(index, e.target.value.normalize('NFC'))}
                               className="w-full h-full min-h-[36px] sm:min-h-[auto] bg-stone-50 sm:bg-transparent border border-stone-200 sm:border-transparent outline-none px-3 sm:px-2 py-2 text-left sm:text-center rounded sm:rounded-none font-bold text-stone-800 sm:text-emerald-700 print:text-black"
                             />
                           </td>
-                        </tr>
+                            <td className="border border-black px-2 py-2">
+                              <input 
+                                type="date" 
+                                className="w-full bg-transparent outline-none text-center"
+                                value={typeof (item.ngayThucHien || '') === 'string' ? (item.ngayThucHien || '').normalize('NFC') : (item.ngayThucHien || '')}
+                                onChange={(e) => {
+                                  const newItems = [...formData.items];
+                                  newItems[index].ngayThucHien = e.target.value.normalize('NFC');
+                                  setFormData({ ...formData, items: newItems });
+                                }}
+                                
+                              />
+                            </td>
+                            </tr>
                       </React.Fragment>
                     );
                   });
@@ -658,10 +663,10 @@ export const InteriorInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, e
           <div className="mb-8">
             <h3 className="font-bold text-[15px] mb-2">Kết luận:</h3>
             <textarea 
-              value={formData.conclusion}
-              onChange={(e) => setFormData({...formData, conclusion: e.target.value})}
+              value={typeof (formData.conclusion) === 'string' ? (formData.conclusion).normalize('NFC') : (formData.conclusion)}
+              onChange={(e) => setFormData({...formData, conclusion: e.target.value.normalize('NFC')})}
               className="w-full h-32 border border-black p-3 outline-none text-[15px] leading-relaxed resize-none font-bold text-emerald-700 print:text-black print:border-none print:p-0 print:h-auto"
-              placeholder="Nhập kết luận kiểm tra..."
+              placeholder="Tình trạng nội thất trước khi vào sửa chữa đã được kiểm tra đúng Quy trình công nghệ."
             />
           </div>
 
@@ -671,8 +676,8 @@ export const InteriorInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, e
               <input 
                 type="text" 
                 className="w-full text-center outline-none bg-transparent font-bold text-[15px] print:text-black" 
-                value={formData['sign_THỢ KIỂM TRA'] || ''} 
-                onChange={(e) => setFormData({...formData, 'sign_THỢ KIỂM TRA': e.target.value})}
+                value={typeof (formData['sign_THỢ KIỂM TRA'] || '') === 'string' ? (formData['sign_THỢ KIỂM TRA'] || '').normalize('NFC') : (formData['sign_THỢ KIỂM TRA'] || '')} 
+                onChange={(e) => setFormData({...formData, 'sign_THỢ KIỂM TRA': e.target.value.normalize('NFC')})}
                 placeholder="..."
               />
             </div>
@@ -681,8 +686,8 @@ export const InteriorInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, e
               <input 
                 type="text" 
                 className="w-full text-center outline-none bg-transparent font-bold text-[15px] print:text-black" 
-                value={formData['sign_TỔ TRƯỞNG'] || ''} 
-                onChange={(e) => setFormData({...formData, 'sign_TỔ TRƯỞNG': e.target.value})}
+                value={typeof (formData['sign_TỔ TRƯỞNG'] || '') === 'string' ? (formData['sign_TỔ TRƯỞNG'] || '').normalize('NFC') : (formData['sign_TỔ TRƯỞNG'] || '')} 
+                onChange={(e) => setFormData({...formData, 'sign_TỔ TRƯỞNG': e.target.value.normalize('NFC')})}
                 placeholder="..."
               />
             </div>
@@ -691,8 +696,8 @@ export const InteriorInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, e
               <input 
                 type="text" 
                 className="w-full text-center outline-none bg-transparent font-bold text-[15px] print:text-black" 
-                value={formData['sign_KCS'] || ''} 
-                onChange={(e) => setFormData({...formData, 'sign_KCS': e.target.value})}
+                value={typeof (formData['sign_KCS'] || '') === 'string' ? (formData['sign_KCS'] || '').normalize('NFC') : (formData['sign_KCS'] || '')} 
+                onChange={(e) => setFormData({...formData, 'sign_KCS': e.target.value.normalize('NFC')})}
                 placeholder="..."
               />
             </div>
@@ -701,8 +706,8 @@ export const InteriorInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, e
               <input 
                 type="text" 
                 className="w-full text-center outline-none bg-transparent font-bold text-[15px] print:text-black" 
-                value={formData['sign_ĐẠI ĐỘI TRƯỞNG'] || ''} 
-                onChange={(e) => setFormData({...formData, 'sign_ĐẠI ĐỘI TRƯỞNG': e.target.value})}
+                value={typeof (formData['sign_ĐẠI ĐỘI TRƯỞNG'] || '') === 'string' ? (formData['sign_ĐẠI ĐỘI TRƯỞNG'] || '').normalize('NFC') : (formData['sign_ĐẠI ĐỘI TRƯỞNG'] || '')} 
+                onChange={(e) => setFormData({...formData, 'sign_ĐẠI ĐỘI TRƯỞNG': e.target.value.normalize('NFC')})}
                 placeholder="..."
               />
             </div>

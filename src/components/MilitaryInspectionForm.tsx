@@ -1,3 +1,4 @@
+import { normalizeNFC } from '../utils/stringUtils';
 import React, { Component, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
   Save, 
@@ -13,18 +14,20 @@ import {
 import { Vehicle } from '../types';
 import { dbService, getCreatorAuditParams, getCurrentUserSession, normalizePlate } from '../services/dbService';
 import { DataService } from '../firebase';
-import HyundaiCountyTemplate from '../HyundaiCountyTemplate.json';
+import { getVehicleTemplate, getVehicleList } from '../templates';
 import { AutoResizeTextarea } from './AutoResizeTextarea';
 import { canEditModule } from '../services/permissionService';
 import { canEditDocument } from '../services/ownershipService';
 
 interface MilitaryInspectionFormProps {
+  targetSessionId?: string;
   vehicle?: Vehicle | null;
   onClose: () => void;
   onSave?: (savedForm: any, isSilent: boolean) => void;
   initialForm?: any;
   onReset?: () => void;
   currentUserRole?: string;
+  repairSessionId?: string;
 }
 
 // Error Boundary subclass to capture component level failures
@@ -109,8 +112,8 @@ const TableRow = React.memo(({
       </td>
       <td className="py-2.5 px-2 text-center bg-transparent w-64 border-transparent">
         <AutoResizeTextarea 
-          value={value}
-          onChange={(e) => onChange(tt, e.target.value)}
+          value={typeof (value) === 'string' ? (value).normalize('NFC') : (value)}
+          onChange={(e) => onChange(tt, e.target.value.normalize('NFC'))}
           placeholder="Tình trạng"
           className="w-full bg-white border border-stone-350 focus:border-stone-800 rounded px-2.5 py-1 text-stone-850 outline-none text-left"
           style={{ fontSize: '11pt' }}
@@ -123,7 +126,7 @@ const TableRow = React.memo(({
   return prevProps.value === nextProps.value;
 });
 
-export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialForm, onReset, currentUserRole }: MilitaryInspectionFormProps) {
+export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialForm, onReset, currentUserRole, repairSessionId }: MilitaryInspectionFormProps) {
   const canEdit = currentUserRole ? canEditModule(currentUserRole as any, 'INSPECTION') : false;
   const currentUser = getCurrentUserSession();
   const isNewDocument = !initialForm?.id && !initialForm?.createdBy;
@@ -167,7 +170,7 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
   const [actualEngineNumber, setActualEngineNumber] = useState<string>(activeVehicle.engineNumber || '');
   const [giverUnit, setGiverUnit] = useState<string>((activeVehicle as any).unit || (activeVehicle as any).createdByUnit || '');
   const [currentVehicleId, setCurrentVehicleId] = useState<string>((activeVehicle as any).vehicleId || '');
-  const [vehicleName, setVehicleName] = useState<string>((activeVehicle as any).vehicleName || (activeVehicle as any).brand || 'Hyundai County');
+  const [vehicleName, setVehicleName] = useState<string>('');
 
   // Additional sections state
   const [staticTechnicalStatus, setStaticTechnicalStatus] = useState<string>('');
@@ -191,7 +194,7 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
   useEffect(() => {
     const target = vehicle || emptyVehicle;
     setCurrentVehicleId((target as any).vehicleId || '');
-    setVehicleName((target as any).vehicleName || (target as any).brand || 'Hyundai County');
+    setVehicleName('');
     setPlateNumber(target.plateNumber || '');
     setChassisNumber(target.chassisNumber || '');
     setActualChassisNumber(target.chassisNumber || '');
@@ -216,6 +219,159 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const hasUserInteracted = useRef<boolean>(false);
 
+  // Search features
+  const [showSearch, setShowSearch] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const searchResultsRef = useRef<HTMLElement[]>([]);
+  const [resultCount, setResultCount] = useState<number>(0);
+  const [currentMatchIndex, setCurrentMatchIndex] = useState<number>(-1);
+  const formRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const scrollToElement = useCallback((el: HTMLElement) => {
+    try {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+        (el as HTMLElement).focus({ preventScroll: true });
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  const clearHighlights = useCallback((elements: HTMLElement[]) => {
+    elements.forEach(el => {
+      el.classList.remove('ring-2', 'ring-yellow-400', 'bg-yellow-50', 'ring-orange-500', 'bg-orange-50');
+    });
+  }, []);
+
+  const applyHighlights = useCallback((elements: HTMLElement[], activeIdx: number) => {
+    elements.forEach((el, idx) => {
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+        if (idx === activeIdx) {
+          el.classList.add('ring-2', 'ring-orange-500', 'bg-orange-50');
+        } else {
+          el.classList.add('ring-2', 'ring-yellow-400', 'bg-yellow-50');
+        }
+      }
+    });
+  }, []);
+
+  // Ensure highlights persist across React renders (e.g., when typing in inputs)
+  useEffect(() => {
+    if (showSearch && searchResultsRef.current.length > 0 && currentMatchIndex >= 0) {
+      applyHighlights(searchResultsRef.current, currentMatchIndex);
+    }
+  });
+
+  // --- Search Logic ---
+  const performSearch = useCallback((query: string) => {
+    try {
+      clearHighlights(searchResultsRef.current);
+      setSearchQuery(query);
+      
+      if (!query.trim() || !formRef.current) {
+        searchResultsRef.current = [];
+        setResultCount(0);
+        setCurrentMatchIndex(-1);
+        return;
+      }
+      
+      const queryLower = query.toLowerCase();
+      const results: HTMLElement[] = [];
+      
+      const walk = (node: Node) => {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          const element = node as HTMLElement;
+          
+          if (['SCRIPT', 'STYLE', 'BUTTON'].includes(element.tagName)) return;
+          if (element.id === 'search-bar-container') return;
+          
+          if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+            const val = (element as HTMLInputElement | HTMLTextAreaElement).value || '';
+            if (String(val).toLowerCase().includes(queryLower)) {
+              results.push(element);
+            }
+          } else {
+            let hasDirectTextMatch = false;
+            for (let i = 0; i < element.childNodes.length; i++) {
+              const child = element.childNodes[i];
+              if (child.nodeType === Node.TEXT_NODE) {
+                const text = child.textContent || '';
+                if (String(text).toLowerCase().includes(queryLower)) {
+                  hasDirectTextMatch = true;
+                  break;
+                }
+              }
+            }
+            if (hasDirectTextMatch) {
+              results.push(element);
+            }
+          }
+          
+          const children = element.childNodes;
+          for (let i = 0; i < children.length; i++) {
+            walk(children[i]);
+          }
+        }
+      };
+      
+      walk(formRef.current);
+      searchResultsRef.current = results;
+      setResultCount(results.length);
+      if (results.length > 0) {
+        setCurrentMatchIndex(0);
+        applyHighlights(results, 0);
+        scrollToElement(results[0]);
+      } else {
+        setCurrentMatchIndex(-1);
+      }
+    } catch (e) {
+      console.error('Search error:', e);
+    }
+  }, [scrollToElement, clearHighlights, applyHighlights]);
+
+  const navigateSearch = useCallback((direction: 'next' | 'prev') => {
+    const results = searchResultsRef.current;
+    if (results.length === 0) return;
+    
+    clearHighlights(results);
+
+    let newIndex = currentMatchIndex;
+    if (direction === 'next') {
+      newIndex = (currentMatchIndex + 1) % results.length;
+    } else {
+      newIndex = (currentMatchIndex - 1 + results.length) % results.length;
+    }
+    setCurrentMatchIndex(newIndex);
+    applyHighlights(results, newIndex);
+    scrollToElement(results[newIndex]);
+  }, [currentMatchIndex, scrollToElement, clearHighlights, applyHighlights]);
+
+  const closeSearch = useCallback(() => {
+    clearHighlights(searchResultsRef.current);
+    setShowSearch(false);
+    setSearchQuery('');
+    searchResultsRef.current = [];
+    setResultCount(0);
+    setCurrentMatchIndex(-1);
+  }, [clearHighlights]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        setShowSearch(true);
+        setTimeout(() => {
+          searchInputRef.current?.focus();
+        }, 100);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+  // --------------------
+
   // Pristine reset action
   const initNewForm = () => {
     if (!canEdit) {
@@ -234,7 +390,7 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
     setGiverName('');
     setReceiverName('');
     setCommanderName('');
-    setVehicleName((activeVehicle as any).vehicleName || (activeVehicle as any).brand || vehicleName || 'Hyundai County');
+    setVehicleName('');
     setPlateNumber(activeVehicle.plateNumber || plateNumber || '');
     setChassisNumber(activeVehicle.chassisNumber || chassisNumber || '');
     setActualChassisNumber(activeVehicle.chassisNumber || actualChassisNumber || '');
@@ -270,7 +426,14 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
       if (hd.engineNumber !== undefined) setEngineNumber(hd.engineNumber);
       if (hd.actualEngineNumber !== undefined) setActualEngineNumber(hd.actualEngineNumber);
       if (hd.giverUnit !== undefined) setGiverUnit(hd.giverUnit);
-      if (hd.vehicleName !== undefined) setVehicleName(hd.vehicleName);
+      if (hd.vehicleName !== undefined) {
+        setVehicleName(hd.vehicleName);
+      } else if (savedData.templateCode) {
+        const tpl = getVehicleTemplate({ templateCode: savedData.templateCode });
+        if (tpl && tpl.vehicleName) {
+          setVehicleName(tpl.vehicleName);
+        }
+      }
       if (hd.staticTechnicalStatus !== undefined) setStaticTechnicalStatus(hd.staticTechnicalStatus);
       if (hd.dynamicTechnicalStatus !== undefined) setDynamicTechnicalStatus(hd.dynamicTechnicalStatus);
       if (hd.recommendation !== undefined) setRecommendation(hd.recommendation);
@@ -356,6 +519,16 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
       console.warn("Lỗi kiểm tra trùng biển số:", err);
     }
 
+    const targetSessionId = repairSessionId || initialForm?.repairSessionId || existingForm?.repairSessionId;
+    if (!targetSessionId) {
+      if (!silent) {
+        alert('Không xác định được hồ sơ sửa chữa. Vui lòng chọn đúng Lần sửa chữa trước khi lập biên bản.');
+      }
+      setIsSaving(false);
+      setSaveStatus('');
+      return;
+    }
+
     const auditParams = getCreatorAuditParams();
     const currentUser = getCurrentUserSession();
     const creator = existingForm && existingForm.createdBy ? {
@@ -375,8 +548,9 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
     const lastEditedBy = currentUser?.fullName || currentUser?.username || currentUser?.email || currentUser?.uid || 'unknown';
 
     const dpItems: any[] = [];
-    if (HyundaiCountyTemplate && Array.isArray(HyundaiCountyTemplate.sections)) {
-       HyundaiCountyTemplate.sections.forEach((sec: any) => {
+    const activeTemplate = getVehicleTemplate({ vehicleName, templateCode: initialForm?.templateCode });
+    if (activeTemplate && Array.isArray(activeTemplate.sections)) {
+       activeTemplate.sections.forEach((sec: any) => {
           if (Array.isArray(sec.items)) {
              sec.items.forEach((item: any) => {
                 const val = formData[item.tt];
@@ -404,6 +578,7 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
 
     const damageProtocolPayload = {
        protocolId: targetProtocolId,
+       repairSessionId: targetSessionId,
        vehicleId: targetVehicleId,
        reportNumber: reportNo || `BBKT-${plateNumber}`,
        createdDate: new Date().toISOString().split('T')[0],
@@ -422,6 +597,7 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
        items: dpItems,
        conclusion: `Nhất trí bàn giao xe ${vehicleName || 'Hyundai County'} biển kiểm soát ${plateNumber} vào sửa chữa cấp ${repairLevel}.`,
        formData,
+       templateCode: activeTemplate?.templateCode || activeTemplate?.vehicleCode || "",
        headerData: {
          reportNo,
          docDate,
@@ -467,9 +643,18 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
        }
 
        if (docExists) {
-         await DataService.update('damageProtocols', targetProtocolId, damageProtocolPayload);
+         await DataService.update('damageProtocols', targetProtocolId, normalizeNFC(damageProtocolPayload));
        } else {
-         await DataService.save('damageProtocols', damageProtocolPayload);
+         await DataService.save('damageProtocols', normalizeNFC(damageProtocolPayload));
+       }
+
+       if (targetSessionId) {
+         try {
+           const templateCode = activeTemplate?.templateCode || activeTemplate?.vehicleCode || null;
+           await dbService.setRepairSessionHandoverTemplate(targetSessionId, templateCode);
+         } catch (e) {
+           console.warn("Lỗi khi cập nhật template giao nhận cho phiên sửa chữa", e);
+         }
        }
 
        // 2. Sync LocalStorage fallback for offline support
@@ -484,7 +669,7 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
           }
        }
        dpList = dpList.filter((p: any) => p.protocolId !== targetProtocolId && p.reportNumber !== damageProtocolPayload.reportNumber);
-       dpList.push(damageProtocolPayload);
+       dpList.push(normalizeNFC(damageProtocolPayload));
        localStorage.setItem(dpKey, JSON.stringify(dpList));
 
        setExistingForm(damageProtocolPayload);
@@ -580,24 +765,27 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
     `;
 
     let tableRows = '';
-    HyundaiCountyTemplate.sections.forEach(section => {
-      tableRows += `
-        <tr>
-          <td colspan="4" class="font-bold" style="background-color: #f5f5f5; font-size: 12px;">${section.name}</td>
-        </tr>
-      `;
-      section.items.forEach(item => {
-        const val = formData[item.tt] !== undefined ? formData[item.tt] : '';
+    const activeTemplate = getVehicleTemplate({ vehicleName, templateCode: initialForm?.templateCode });
+    if (activeTemplate && Array.isArray(activeTemplate.sections)) {
+      activeTemplate.sections.forEach((section: any) => {
         tableRows += `
           <tr>
-            <td style="text-align: center; font-size: 12px;">${item.tt}</td>
-            <td style="font-size: 12px;">${item.name}</td>
-            <td style="text-align: center; font-size: 12px;">${item.quantity}</td>
-            <td style="font-size: 12px;">${val}</td>
+            <td colspan="4" class="font-bold" style="background-color: #f5f5f5; font-size: 12px;">${section.name}</td>
           </tr>
         `;
+        section.items.forEach((item: any) => {
+          const val = formData[item.tt] !== undefined ? formData[item.tt] : '';
+          tableRows += `
+            <tr>
+              <td style="text-align: center; font-size: 12px;">${item.tt}</td>
+              <td style="font-size: 12px;">${item.name}</td>
+              <td style="text-align: center; font-size: 12px;">${item.quantity}</td>
+              <td style="font-size: 12px;">${val}</td>
+            </tr>
+          `;
+        });
       });
-    });
+    }
 
     const bodyHtml = `
       <div style="width: 100%;">
@@ -732,9 +920,20 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
   };
 
   // High performance cached sections mapping
+  const activeTemplate = useMemo(() => getVehicleTemplate({ vehicleName, templateCode: initialForm?.templateCode }), [vehicleName, initialForm?.templateCode]);
+
   const memoizedSectionsRender = useMemo(() => {
-    return HyundaiCountyTemplate.sections.map((section, idx) => (
-      <div key={idx} className="mb-6 border border-stone-250 rounded-lg overflow-hidden break-inside-avoid shadow-sm">
+    if (!activeTemplate || !Array.isArray(activeTemplate.sections)) {
+      return (
+        <div className="p-8 text-center bg-amber-50 border border-amber-200 rounded-xl my-6 shadow-sm">
+          <p className="text-amber-800 font-semibold text-base">
+            {vehicleName ? `Chưa có mẫu biên bản giao nhận cho loại xe: ${vehicleName}` : 'Vui lòng chọn TỒN XE để hiển thị nội dung mẫu biên bản.'}
+          </p>
+        </div>
+      );
+    }
+    return activeTemplate.sections.map((section: any, idx: number) => (
+      <div key={`${vehicleName}-${idx}`} className="mb-6 border border-stone-250 rounded-lg overflow-hidden break-inside-avoid shadow-sm">
         <div className="bg-stone-100 px-4 py-2 border-b border-stone-250 font-bold uppercase text-stone-800 flex justify-between items-center" style={{ fontSize: '13pt' }}>
           <span>{section.name}</span>
           <span className="text-stone-500 font-mono font-normal" style={{ fontSize: '11pt' }}>({section.items.length} chi tiết)</span>
@@ -752,13 +951,13 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-200">
-                {section.items.map((item) => (
+                {section.items.map((item, itemIndex) => (
                   <TableRow 
-                    key={item.tt}
+                    key={`${vehicleName}-${idx}-${itemIndex}-${item.tt}`}
                     tt={item.tt}
                     name={item.name}
                     quantity={item.quantity}
-                    value={formData[item.tt] || ''}
+                    value={typeof (formData[item.tt] || '') === 'string' ? (formData[item.tt] || '').normalize('NFC') : (formData[item.tt] || '')}
                     onChange={handleRowChange}
                   />
                 ))}
@@ -772,7 +971,7 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
         )}
       </div>
     ));
-  }, [formData, handleRowChange]);
+  }, [formData, handleRowChange, activeTemplate, vehicleName]);
 
   return (
     <div className={`flex flex-col h-full bg-stone-100 border border-stone-200 shadow-xl overflow-hidden ${isFullscreen ? 'fixed inset-0 z-50' : 'relative rounded-2xl'}`} style={{ maxHeight: isFullscreen ? '100vh' : '820px' }}>
@@ -905,6 +1104,17 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
               <Printer className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">In</span>
             </button>
+            
+            <button 
+              onClick={() => {
+                setShowSearch(true);
+                setTimeout(() => searchInputRef.current?.focus(), 100);
+              }}
+              className="px-3.5 py-1.5 bg-stone-50 hover:bg-stone-100 text-stone-600 hover:text-stone-800 border border-stone-200 rounded-lg flex items-center gap-1.5 text-xs transition-all cursor-pointer"
+              title="Tìm kiếm trong biên bản (Ctrl+F)"
+            >
+              <span>🔍 Tìm trong biên bản</span>
+            </button>
 
             <button 
               onClick={onClose}
@@ -915,6 +1125,69 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
           </div>
         </div>
       </div>
+
+      {/* Search Bar */}
+      {showSearch && (
+        <div id="search-bar-container" className="flex items-center px-5 py-2 bg-stone-50 border-b border-stone-200 gap-3 shrink-0 print:hidden">
+          <div className="relative flex-1 max-w-sm flex items-center">
+            <span className="absolute left-2.5 text-stone-400">🔍</span>
+            <input 
+              ref={searchInputRef}
+              type="text" 
+              className="w-full pl-8 pr-3 py-1 text-sm border border-stone-300 rounded focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+              placeholder="Tìm trong biên bản..."
+              value={typeof (searchQuery) === 'string' ? (searchQuery).normalize('NFC') : (searchQuery)}
+              onChange={(e) => performSearch(e.target.value.normalize('NFC'))}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (e.shiftKey) {
+                    navigateSearch('prev');
+                  } else {
+                    navigateSearch('next');
+                  }
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  closeSearch();
+                }
+              }}
+            />
+          </div>
+          {resultCount > 0 ? (
+            <span className="text-xs font-mono text-stone-500">
+              {currentMatchIndex + 1} / {resultCount}
+            </span>
+          ) : searchQuery ? (
+            <span className="text-xs font-mono text-stone-500 text-rose-500">
+              0 / 0
+            </span>
+          ) : null}
+          <div className="flex bg-stone-200 rounded border border-stone-300 overflow-hidden">
+            <button 
+              onClick={() => navigateSearch('prev')}
+              disabled={resultCount === 0}
+              className="px-2 py-1 text-stone-600 hover:bg-stone-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              ▲
+            </button>
+            <div className="w-[1px] bg-stone-300"></div>
+            <button 
+              onClick={() => navigateSearch('next')}
+              disabled={resultCount === 0}
+              className="px-2 py-1 text-stone-600 hover:bg-stone-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              ▼
+            </button>
+          </div>
+          <button 
+            onClick={closeSearch}
+            className="p-1 hover:bg-stone-200 text-stone-500 rounded cursor-pointer ml-auto"
+            title="Đóng tìm kiếm (Esc)"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Saving Alert Banner */}
       {isSuccessAlert && (
@@ -930,6 +1203,7 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
       {/* Scrollable Container and Custom A4 Frame styling */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden w-full flex sm:justify-center p-0 sm:p-8 print:p-0 print:block bg-white sm:bg-stone-50/80">
         <div 
+          ref={formRef}
           className="bg-white text-stone-900 sm:shadow-2xl origin-top-left sm:origin-top w-full sm:w-auto border-none sm:border-2 border-transparent sm:border-stone-200 print:border-none print:w-full print:p-0 print:shadow-none print:!zoom-100 min-h-full sm:min-h-[350mm]"
           style={{
             fontFamily: "'Times New Roman', Times, serif",
@@ -970,39 +1244,39 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
           <div className="w-full flex flex-col sm:flex-row sm:justify-between items-center sm:items-start mb-6 sm:mb-8 pb-4 border-b border-stone-200 gap-y-6 sm:gap-y-0">
             {/* National Mottos - Right side on desktop, Top on mobile */}
             <div className="w-full sm:w-1/2 text-center space-y-1 order-1 sm:order-2">
-              <div className="font-bold text-stone-900 uppercase" style={{ fontSize: '13pt' }}>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
-              <div className="font-bold text-stone-900 uppercase underline decoration-1 underline-offset-4" style={{ fontSize: '13pt' }}>Độc lập - Tự do - Hạnh phúc</div>
-              <div className="flex justify-center items-center gap-1.5 mt-3" style={{ fontSize: '13pt' }}>
+              <div className="font-bold text-stone-900 uppercase" style={{ fontSize: '11pt' }}>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+              <div className="font-bold text-stone-900 uppercase underline decoration-1 underline-offset-4" style={{ fontSize: '11pt' }}>Độc lập - Tự do - Hạnh phúc</div>
+              <div className="flex justify-center items-center gap-1.5 mt-3" style={{ fontSize: '10.5pt' }}>
                 <input 
                   type="text" 
-                  value={docDate} 
+                  value={typeof (docDate) === 'string' ? (docDate).normalize('NFC') : (docDate)} 
                   onChange={(e) => {
                     hasUserInteracted.current = true;
-                    setDocDate(e.target.value);
+                    setDocDate(e.target.value.normalize('NFC'));
                   }}
                   placeholder="Gia Lai, ngày... tháng... năm 2026"
                   className="w-full max-w-[320px] bg-transparent border-b border-stone-400 focus:border-stone-850 outline-none px-2 py-0.5 text-center font-bold"
-                  style={{ fontSize: '13pt' }}
+                  style={{ fontSize: '10.5pt' }}
                 />
               </div>
             </div>
 
             {/* Organization - Left side on desktop, Bottom on mobile */}
             <div className="w-full sm:w-1/2 text-center space-y-1 order-2 sm:order-1">
-              <div className="font-bold text-stone-900 uppercase" style={{ fontSize: '13pt' }}>CỤC HẬU CẦN - KỸ THUẬT QUÂN ĐOÀN 34</div>
-              <div className="font-bold text-stone-900 uppercase underline decoration-1 underline-offset-4" style={{ fontSize: '13pt' }}>TIỂU ĐOÀN SCTH30</div>
-              <div className="flex justify-center items-center gap-1.5 mt-3" style={{ fontSize: '13pt' }}>
+              <div className="font-bold text-stone-900 uppercase" style={{ fontSize: '11pt' }}>CỤC HẬU CẦN - KỸ THUẬT QUÂN ĐOÀN 34</div>
+              <div className="font-bold text-stone-900 uppercase underline decoration-1 underline-offset-4" style={{ fontSize: '11pt' }}>TIỂU ĐOÀN SCTH30</div>
+              <div className="flex justify-center items-center gap-1.5 mt-3" style={{ fontSize: '11pt' }}>
                 <span className="text-stone-700 whitespace-nowrap">Số biên bản:</span>
                 <input 
                   type="text" 
-                  value={reportNo} 
+                  value={typeof (reportNo) === 'string' ? (reportNo).normalize('NFC') : (reportNo)} 
                   onChange={(e) => {
                     hasUserInteracted.current = true;
-                    setReportNo(e.target.value);
+                    setReportNo(e.target.value.normalize('NFC'));
                   }}
                   placeholder="Nhập số..."
                   className="w-32 bg-transparent border-b border-stone-400 focus:border-stone-850 outline-none px-2 py-0.5 text-center font-bold font-mono"
-                  style={{ fontSize: '13pt' }}
+                  style={{ fontSize: '11pt' }}
                 />
               </div>
             </div>
@@ -1025,17 +1299,25 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4" style={{ fontSize: '13pt' }}>
               <div className="flex flex-col sm:flex-row sm:items-center items-start gap-1 sm:gap-1.5 w-full">
                 <span className="font-bold text-stone-700 whitespace-nowrap">Tên xe:</span>
-                <input 
-                  type="text" 
-                  value={vehicleName} 
+                <select 
+                  value={typeof (vehicleName) === 'string' ? (vehicleName).normalize('NFC') : (vehicleName)} 
                   onChange={(e) => {
                     hasUserInteracted.current = true;
-                    setVehicleName(e.target.value);
+                    setVehicleName(e.target.value.normalize('NFC'));
+                    // Explicitly reset form data when changing template manually
+                    setFormData({});
                   }}
-                  placeholder="Hyundai County"
-                  className="flex-1 w-full sm:w-auto bg-stone-50 border-b border-stone-400 focus:border-stone-850 px-2 py-0.5 outline-none font-bold font-serif text-stone-900"
+                  className="flex-1 w-full sm:w-auto bg-stone-50 border-b border-stone-400 focus:border-stone-850 px-2 py-0.5 outline-none font-bold font-serif text-stone-900 cursor-pointer"
                   style={{ fontSize: '13pt' }}
-                />
+                >
+                  {!vehicleName && <option value="">-- Chọn tên xe --</option>}
+                  {!getVehicleList().includes(vehicleName) && vehicleName && (
+                    <option value={typeof (vehicleName) === 'string' ? (vehicleName).normalize('NFC') : (vehicleName)}>{vehicleName}</option>
+                  )}
+                  {getVehicleList().map((name) => (
+                    <option key={name} value={typeof (name) === 'string' ? (name).normalize('NFC') : (name)}>{name}</option>
+                  ))}
+                </select>
               </div>
               <div className="flex flex-col sm:flex-row sm:items-center items-start gap-1 sm:gap-1.5 w-full">
                 <span className="font-bold text-stone-700 whitespace-nowrap">Đơn vị nhận:</span>
@@ -1046,10 +1328,10 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
                 <span className="font-bold text-stone-700 whitespace-nowrap">Mức sửa chữa:</span>
                 <input 
                   type="text" 
-                  value={repairLevel} 
+                  value={typeof (repairLevel) === 'string' ? (repairLevel).normalize('NFC') : (repairLevel)} 
                   onChange={(e) => {
                     hasUserInteracted.current = true;
-                    setRepairLevel(e.target.value);
+                    setRepairLevel(e.target.value.normalize('NFC'));
                   }}
                   placeholder="Nhập mức sửa chữa..."
                   className="flex-1 w-full sm:w-auto bg-stone-50 border-b border-stone-400 focus:border-stone-850 px-2 py-0.5 outline-none font-semibold font-serif"
@@ -1060,10 +1342,10 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
                 <span className="font-bold text-stone-700 whitespace-nowrap">Nhóm sửa chữa:</span>
                 <input 
                   type="text" 
-                  value={repairGroup} 
+                  value={typeof (repairGroup) === 'string' ? (repairGroup).normalize('NFC') : (repairGroup)} 
                   onChange={(e) => {
                     hasUserInteracted.current = true;
-                    setRepairGroup(e.target.value);
+                    setRepairGroup(e.target.value.normalize('NFC'));
                   }}
                   placeholder="Nhập nhóm sửa chữa..."
                   className="flex-1 w-full sm:w-auto bg-stone-50 border-b border-stone-400 focus:border-stone-850 px-2 py-0.5 outline-none font-semibold font-serif"
@@ -1075,10 +1357,10 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
                 <span className="font-bold text-stone-700 whitespace-nowrap">Số đăng ký (SĐK):</span>
                 <input 
                   type="text" 
-                  value={plateNumber} 
+                  value={typeof (plateNumber) === 'string' ? (plateNumber).normalize('NFC') : (plateNumber)} 
                   onChange={(e) => {
                     hasUserInteracted.current = true;
-                    setPlateNumber(e.target.value);
+                    setPlateNumber(e.target.value.normalize('NFC'));
                   }}
                   placeholder="Nhập SĐK..."
                   className="flex-1 w-full sm:w-auto bg-stone-50 border-b border-stone-400 focus:border-stone-850 px-2 py-0.5 outline-none font-bold text-emerald-950 font-serif md:text-emerald-900"
@@ -1089,10 +1371,10 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
                 <span className="font-bold text-stone-700 whitespace-nowrap">Đơn vị giao:</span>
                 <input 
                   type="text" 
-                  value={giverUnit} 
+                  value={typeof (giverUnit) === 'string' ? (giverUnit).normalize('NFC') : (giverUnit)} 
                   onChange={(e) => {
                     hasUserInteracted.current = true;
-                    setGiverUnit(e.target.value);
+                    setGiverUnit(e.target.value.normalize('NFC'));
                   }}
                   placeholder="Nhập đơn vị giao..."
                   className="flex-1 w-full sm:w-auto bg-amber-50/20 border-b border-amber-300 focus:border-stone-850 px-2 py-0.5 outline-none font-semibold font-serif"
@@ -1104,10 +1386,10 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
                 <span className="font-bold text-stone-700 whitespace-nowrap">Số khung (SK) lý lịch:</span>
                 <input 
                   type="text" 
-                  value={chassisNumber} 
+                  value={typeof (chassisNumber) === 'string' ? (chassisNumber).normalize('NFC') : (chassisNumber)} 
                   onChange={(e) => {
                     hasUserInteracted.current = true;
-                    setChassisNumber(e.target.value);
+                    setChassisNumber(e.target.value.normalize('NFC'));
                   }}
                   placeholder="Nhập số khung..."
                   className="flex-1 w-full sm:w-auto bg-stone-50 border-b border-stone-400 focus:border-stone-850 px-2 py-0.5 outline-none font-mono font-semibold"
@@ -1118,10 +1400,10 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
                 <span className="font-bold text-stone-700 whitespace-nowrap">Số khung (SK) thực tế:</span>
                 <input 
                   type="text" 
-                  value={actualChassisNumber} 
+                  value={typeof (actualChassisNumber) === 'string' ? (actualChassisNumber).normalize('NFC') : (actualChassisNumber)} 
                   onChange={(e) => {
                     hasUserInteracted.current = true;
-                    setActualChassisNumber(e.target.value);
+                    setActualChassisNumber(e.target.value.normalize('NFC'));
                   }}
                   placeholder="Nhập số khung thực tế..."
                   className="flex-1 w-full sm:w-auto bg-stone-50 border-b border-stone-400 focus:border-stone-850 px-2 py-0.5 outline-none font-mono font-bold text-stone-900"
@@ -1133,10 +1415,10 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
                 <span className="font-bold text-stone-700 whitespace-nowrap">Số máy (SM) lý lịch:</span>
                 <input 
                   type="text" 
-                  value={engineNumber} 
+                  value={typeof (engineNumber) === 'string' ? (engineNumber).normalize('NFC') : (engineNumber)} 
                   onChange={(e) => {
                     hasUserInteracted.current = true;
-                    setEngineNumber(e.target.value);
+                    setEngineNumber(e.target.value.normalize('NFC'));
                   }}
                   placeholder="Nhập số máy..."
                   className="flex-1 w-full sm:w-auto bg-stone-50 border-b border-stone-400 focus:border-stone-850 px-2 py-0.5 outline-none font-mono font-semibold"
@@ -1147,10 +1429,10 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
                 <span className="font-bold text-stone-700 whitespace-nowrap">Số máy (SM) thực tế:</span>
                 <input 
                   type="text" 
-                  value={actualEngineNumber} 
+                  value={typeof (actualEngineNumber) === 'string' ? (actualEngineNumber).normalize('NFC') : (actualEngineNumber)} 
                   onChange={(e) => {
                     hasUserInteracted.current = true;
-                    setActualEngineNumber(e.target.value);
+                    setActualEngineNumber(e.target.value.normalize('NFC'));
                   }}
                   placeholder="Nhập số máy thực tế..."
                   className="flex-1 w-full sm:w-auto bg-stone-50 border-b border-stone-400 focus:border-stone-850 px-2 py-0.5 outline-none font-mono font-bold text-stone-900"
@@ -1178,13 +1460,13 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
             </h2>
             <div className="min-h-[100px] border-b border-dotted border-stone-300">
                <AutoResizeTextarea 
-                 value={staticTechnicalStatus}
+                 value={typeof (staticTechnicalStatus) === 'string' ? (staticTechnicalStatus).normalize('NFC') : (staticTechnicalStatus)}
                  onChange={(e) => {
                    hasUserInteracted.current = true;
-                   setStaticTechnicalStatus(e.target.value);
+                   setStaticTechnicalStatus(e.target.value.normalize('NFC'));
                  }}
                  placeholder="......................................................................................................................................." 
-                 className="w-full bg-transparent border-none focus:ring-0 resize-none p-0 whitespace-pre-wrap font-serif" 
+                 className="w-full bg-transparent border-none focus:ring-0 resize-none py-1 whitespace-pre-wrap" 
                  style={{ fontSize: '13pt', lineHeight: '1.5' }} 
                />
             </div>
@@ -1194,13 +1476,13 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
             </h2>
             <div className="min-h-[100px] border-b border-dotted border-stone-300">
                <AutoResizeTextarea 
-                 value={dynamicTechnicalStatus}
+                 value={typeof (dynamicTechnicalStatus) === 'string' ? (dynamicTechnicalStatus).normalize('NFC') : (dynamicTechnicalStatus)}
                  onChange={(e) => {
                    hasUserInteracted.current = true;
-                   setDynamicTechnicalStatus(e.target.value);
+                   setDynamicTechnicalStatus(e.target.value.normalize('NFC'));
                  }}
                  placeholder="......................................................................................................................................." 
-                 className="w-full bg-transparent border-none focus:ring-0 resize-none p-0 whitespace-pre-wrap font-serif" 
+                 className="w-full bg-transparent border-none focus:ring-0 resize-none py-1 whitespace-pre-wrap" 
                  style={{ fontSize: '13pt', lineHeight: '1.5' }} 
                />
             </div>
@@ -1210,13 +1492,13 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
             </h2>
             <div className="min-h-[80px] border-b border-dotted border-stone-300">
                <AutoResizeTextarea 
-                 value={recommendation}
+                 value={typeof (recommendation) === 'string' ? (recommendation).normalize('NFC') : (recommendation)}
                  onChange={(e) => {
                    hasUserInteracted.current = true;
-                   setRecommendation(e.target.value);
+                   setRecommendation(e.target.value.normalize('NFC'));
                  }}
                  placeholder="......................................................................................................................................." 
-                 className="w-full bg-transparent border-none focus:ring-0 resize-none p-0 whitespace-pre-wrap font-serif" 
+                 className="w-full bg-transparent border-none focus:ring-0 resize-none py-1 whitespace-pre-wrap" 
                  style={{ fontSize: '13pt', lineHeight: '1.5' }} 
                />
             </div>
@@ -1226,13 +1508,13 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
             </h2>
             <div className="min-h-[80px] border-b border-dotted border-stone-300">
                <AutoResizeTextarea 
-                 value={customConclusion}
+                 value={typeof (customConclusion) === 'string' ? (customConclusion).normalize('NFC') : (customConclusion)}
                  onChange={(e) => {
                    hasUserInteracted.current = true;
-                   setCustomConclusion(e.target.value);
+                   setCustomConclusion(e.target.value.normalize('NFC'));
                  }}
                  placeholder="......................................................................................................................................." 
-                 className="w-full bg-transparent border-none focus:ring-0 resize-none p-0 whitespace-pre-wrap font-serif" 
+                 className="w-full bg-transparent border-none focus:ring-0 resize-none py-1 whitespace-pre-wrap" 
                  style={{ fontSize: '13pt', lineHeight: '1.5' }} 
                />
             </div>
@@ -1245,10 +1527,10 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
                <p className="italic mb-24" style={{ fontSize: '13pt' }}>(Ký, ghi rõ họ tên)</p>
                <input 
                  type="text" 
-                 value={giverName}
+                 value={typeof (giverName) === 'string' ? (giverName).normalize('NFC') : (giverName)}
                  onChange={(e) => {
                    hasUserInteracted.current = true;
-                   setGiverName(e.target.value);
+                   setGiverName(e.target.value.normalize('NFC'));
                  }}
                  className="w-4/5 text-center bg-transparent border-b border-dotted border-stone-400 font-bold focus:outline-none focus:border-stone-800" 
                  style={{ fontSize: '13pt' }} 
@@ -1260,10 +1542,10 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
                <p className="italic mb-24" style={{ fontSize: '13pt' }}>(Ký, ghi rõ họ tên)</p>
                <input 
                  type="text" 
-                 value={receiverName}
+                 value={typeof (receiverName) === 'string' ? (receiverName).normalize('NFC') : (receiverName)}
                  onChange={(e) => {
                    hasUserInteracted.current = true;
-                   setReceiverName(e.target.value);
+                   setReceiverName(e.target.value.normalize('NFC'));
                  }}
                  className="w-4/5 text-center bg-transparent border-b border-dotted border-stone-400 font-bold focus:outline-none focus:border-stone-800" 
                  style={{ fontSize: '13pt' }} 
@@ -1275,10 +1557,10 @@ export function MilitaryInspectionFormInner({ vehicle, onClose, onSave, initialF
                <p className="italic mb-24" style={{ fontSize: '13pt' }}>(Ký, ghi rõ họ tên)</p>
                <input 
                  type="text" 
-                 value={commanderName}
+                 value={typeof (commanderName) === 'string' ? (commanderName).normalize('NFC') : (commanderName)}
                  onChange={(e) => {
                    hasUserInteracted.current = true;
-                   setCommanderName(e.target.value);
+                   setCommanderName(e.target.value.normalize('NFC'));
                  }}
                  className="w-4/5 text-center bg-transparent border-b border-dotted border-stone-400 font-bold focus:outline-none focus:border-stone-800" 
                  style={{ fontSize: '13pt' }} 

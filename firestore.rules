@@ -117,6 +117,42 @@ service cloud.firestore {
       allow create, update, delete: if isValidId(formId);
     }
 
+    // Collection: postRepairRecords
+    match /postRepairRecords/{recordId} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(recordId);
+    }
+
+    // Collection: repairCampaigns
+    match /repairCampaigns/{campaignId} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(campaignId);
+    }
+
+    // Collection: repairSessions
+    match /repairSessions/{sessionId} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(sessionId);
+    }
+
+    // Collection: engineInspectionForms
+    match /engineInspectionForms/{formId} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(formId);
+    }
+
+    // Collection: uploaded_files
+    match /fileId/{fileId} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(fileId);
+    }
+
+    // Collection: uploaded_files
+    match /uploaded_files/{fileId} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(fileId);
+    }
+
     // Collection: test
     match /test/{docId} {
       allow read, write: if true;

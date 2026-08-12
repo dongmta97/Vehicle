@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, FileCheck, Search, PlusCircle, LayoutDashboard, FileText, Trash2, X, Filter } from 'lucide-react';
 import { TaskPlanForm } from './TaskPlanForm';
 import { TaskReportForm } from './TaskReportForm';
+import { ConfirmDialog } from './common/ConfirmDialog';
 import { DataService } from '../firebase';
 import { getCurrentUserSession } from '../services/dbService';
 import { formatVNTime, parseDate } from '../utils/time';
@@ -38,6 +39,11 @@ export function OperationsTab() {
   const [appliedFilterType, setAppliedFilterType] = useState('ALL');
 
   const [usersMap, setUsersMap] = useState<Record<string, string>>({});
+  const [deleteRequest, setDeleteRequest] = useState<{
+    open: boolean;
+    formId: string;
+    templateType: string;
+  } | null>(null);
 
   useEffect(() => {
     loadOperations();
@@ -155,9 +161,7 @@ export function OperationsTab() {
     setFilterEndDate(formatDateObj(end));
   };
 
-  const handleDeleteForm = async (e: React.MouseEvent, formId: string, templateType: string) => {
-    e.stopPropagation();
-
+  const handleDeleteForm = async (formId: string, templateType: string) => {
     const currentUser = getCurrentUserSession();
     
     const formRecord = operationsData.find(f => f.id === formId);
@@ -170,12 +174,11 @@ export function OperationsTab() {
     }
 
     const canEdit = currentUser ? canEditModule(currentUser.role, 'OPERATIONS') : false;
+
     if (!canEdit) {
       alert('Bạn không có quyền thực hiện thao tác này.');
       return;
     }
-
-    if (!window.confirm('Bạn có chắc chắn muốn xóa hồ sơ này?')) return;
 
     try {
       const currentUser = getCurrentUserSession();
@@ -223,7 +226,10 @@ export function OperationsTab() {
 
       try {
         await DataService.update("repairForms", formId, updateData);
-      } catch (err) {}
+      } catch (err) {
+        console.error("Error deleting document:", err);
+        alert("Có lỗi xảy ra khi xóa hồ sơ.");
+      }
 
       loadOperations();
     } catch (err) {
@@ -353,8 +359,8 @@ export function OperationsTab() {
             <div>
               <label className="block text-[11px] font-bold text-stone-500 uppercase mb-1">Loại hồ sơ</label>
               <select 
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
+                value={typeof (filterType) === 'string' ? (filterType).normalize('NFC') : (filterType)}
+                onChange={(e) => setFilterType(e.target.value.normalize('NFC'))}
                 className="w-full bg-stone-50 border border-stone-200 text-sm rounded-xl px-3 py-2 text-stone-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
               >
                 <option value="ALL">Tất cả</option>
@@ -366,8 +372,8 @@ export function OperationsTab() {
               <label className="block text-[11px] font-bold text-stone-500 uppercase mb-1">Từ ngày (Theo ngày tạo)</label>
               <input 
                 type="date" 
-                value={filterStartDate}
-                onChange={(e) => setFilterStartDate(e.target.value)}
+                value={typeof (filterStartDate) === 'string' ? (filterStartDate).normalize('NFC') : (filterStartDate)}
+                onChange={(e) => setFilterStartDate(e.target.value.normalize('NFC'))}
                 className="w-full bg-stone-50 border border-stone-200 text-sm rounded-xl px-3 py-2 text-stone-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" 
               />
             </div>
@@ -375,8 +381,8 @@ export function OperationsTab() {
               <label className="block text-[11px] font-bold text-stone-500 uppercase mb-1">Đến ngày (Theo ngày tạo)</label>
               <input 
                 type="date" 
-                value={filterEndDate}
-                onChange={(e) => setFilterEndDate(e.target.value)}
+                value={typeof (filterEndDate) === 'string' ? (filterEndDate).normalize('NFC') : (filterEndDate)}
+                onChange={(e) => setFilterEndDate(e.target.value.normalize('NFC'))}
                 className="w-full bg-stone-50 border border-stone-200 text-sm rounded-xl px-3 py-2 text-stone-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" 
               />
             </div>
@@ -461,7 +467,14 @@ export function OperationsTab() {
                     className="bg-stone-50 rounded-xl shadow-sm border border-stone-200 p-5 cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all group relative"
                   >
                     <button
-                      onClick={(e) => handleDeleteForm(e, form.id, form.templateType)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteRequest({
+                          open: true,
+                          formId: form.id,
+                          templateType: form.templateType
+                        });
+                      }}
                       className="absolute top-4 right-4 p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors z-10"
                       title="Xóa hồ sơ"
                     >
@@ -480,9 +493,7 @@ export function OperationsTab() {
                     </h5>
                     
                     <div className="text-sm text-stone-600 mb-2 font-medium flex flex-wrap items-center gap-1.5">
-                      <span className="text-[10px] uppercase text-stone-400 font-bold bg-white px-1.5 py-0.5 rounded border border-stone-200">
-                        N.Tạo: {form.createdAt ? formatVNTime(form.createdAt) : ''}
-                      </span>
+                      
                       {form.templateType === 'TASK_PLAN' && form.formData?.week && (
                          <span className="text-[10px] uppercase text-stone-400 font-bold bg-white px-1.5 py-0.5 rounded border border-stone-200">Tuần {form.formData.week}</span>
                       )}
@@ -538,6 +549,21 @@ export function OperationsTab() {
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={!!deleteRequest?.open}
+        title="XÁC NHẬN XÓA"
+        message="Bạn có chắc chắn muốn xóa hồ sơ này? Thao tác này sẽ không thể hoàn tác."
+        confirmText="Xóa hồ sơ"
+        cancelText="Hủy"
+        onConfirm={() => {
+          if (deleteRequest) {
+            handleDeleteForm(deleteRequest.formId, deleteRequest.templateType);
+            setDeleteRequest(null);
+          }
+        }}
+        onCancel={() => setDeleteRequest(null)}
+      />
     </div>
   );
 }

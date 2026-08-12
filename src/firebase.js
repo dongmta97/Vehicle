@@ -128,10 +128,71 @@ function handleFirestoreError(error, operationType, path) {
   throw new Error(JSON.stringify(errInfo));
 }
 
+// Helper auto-link RepairSession before saving or updating repair forms
+async function attachRepairSessionIdIfMissing(collectionName, data) {
+  const targetCollections = ['repairForms', 'engineInspectionForms', 'vehicleInspectionForms', 'postRepairRecords', 'uploaded_files'];
+  if (!targetCollections.includes(collectionName) || !data) {
+    return data;
+  }
+  if (data.repairSessionId) {
+    return data;
+  }
+
+  const dpId = data.damageProtocolId || data.formData?.damageProtocolId || data.formData?.reportNo;
+  const vId = data.vehicleId || data.formData?.vehicleId;
+
+  try {
+    let sessions = [];
+    if (isFirebaseConfigured && db) {
+      try {
+        const colRef = collection(db, 'repairSessions');
+        const snapshot = await getDocs(colRef);
+        sessions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } catch (fErr) {
+        console.warn('Failed to load repairSessions from Firestore for auto-link, falling back to LocalStorage:', fErr);
+      }
+    }
+    if (!sessions.length) {
+      const storeKey = 'local_repairSessions';
+      sessions = JSON.parse(localStorage.getItem(storeKey) || '[]');
+    }
+
+    const openSessions = sessions.filter(
+      s => !s.isDeleted && s.workflowState !== 'HANDED_OVER' && s.status !== 'CLOSED'
+    );
+
+    let matchedSession = null;
+    // Ưu tiên tìm theo damageProtocolId nếu có
+    if (dpId) {
+      matchedSession = openSessions.find(s => s.damageProtocolId === dpId);
+    }
+    // Nếu không tìm thấy hoặc không có damageProtocolId, tìm theo vehicleId
+    if (!matchedSession && vId) {
+      matchedSession = openSessions.find(s => s.vehicleId === vId);
+    }
+
+    if (matchedSession) {
+      data.repairSessionId = matchedSession.id;
+      console.info(
+        `[REPAIR_SESSION_LINK] Tự động gán repairSessionId: "${matchedSession.id}" cho ${collectionName} (vehicleId: "${vId || 'N/A'}", damageProtocolId: "${dpId || 'N/A'}")`
+      );
+    } else {
+      console.warn(
+        `[REPAIR_SESSION_LINK] Không tìm thấy RepairSession OPEN cho ${collectionName} (vehicleId: "${vId || 'N/A'}", damageProtocolId: "${dpId || 'N/A'}"). Tiến hành lưu không có repairSessionId.`
+      );
+    }
+  } catch (err) {
+    console.warn(`[REPAIR_SESSION_LINK] Lỗi khi tra cứu RepairSession cho ${collectionName}:`, err);
+  }
+
+  return data;
+}
+
 // DataService wrapper
 export const DataService = {
   async save(collectionName, payload) {
     let data = applyModuleMigration(collectionName, payload);
+    await attachRepairSessionIdIfMissing(collectionName, data);
     let docId = data.id;
     if (!docId) {
       if (collectionName === 'damageProtocols') {
@@ -196,20 +257,40 @@ export const DataService = {
   },
 
   async load(collectionName) {
+    console.log(
+      "LOAD:",
+      collectionName,
+      "isFirebaseConfigured =",
+      isFirebaseConfigured,
+      "db =",
+      !!db
+    );
     if (!isFirebaseConfigured || !db) {
       // Fallback to LocalStorage dynamically
       console.warn(`Firebase not configured. Loading ${collectionName} from LocalStorage.`);
       const storeKey = `local_${collectionName}`;
       const stored = localStorage.getItem(storeKey);
-      if (!stored && collectionName === 'vehicles') {
-        return [];
-      }
-      return JSON.parse(stored || "[]").map(item => applyModuleMigration(collectionName, item));
+      return JSON.parse(stored || "[]").map(item => {
+        if (collectionName === 'users' && !item._firestoreDocId) {
+          item._firestoreDocId = item.id || item.uid || item.username;
+        }
+        return applyModuleMigration(collectionName, item);
+      });
     }
     try {
       const colRef = collection(db, collectionName);
       const snapshot = await getDocs(colRef);
-      return snapshot.docs.map(doc => applyModuleMigration(collectionName, { id: doc.id, ...doc.data() }));
+      return snapshot.docs.map(doc => {
+        const rawData = doc.data();
+        if (collectionName === 'users') {
+          return applyModuleMigration(collectionName, {
+            ...rawData,
+            _firestoreDocId: doc.id,
+            id: rawData.id || doc.id
+          });
+        }
+        return applyModuleMigration(collectionName, { id: doc.id, ...rawData });
+      });
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, collectionName);
     }
@@ -229,7 +310,7 @@ export const DataService = {
         if (collectionName === 'vehicles') {
           return (item.vehicleId === id || item.id === id);
         }
-        return (item.id === id || item.vehicleId === id || item.historyId === id || item.protocolId === id);
+        return (item.id === id || item.vehicleId === id || item.historyId === id || item.protocolId === id || item._firestoreDocId === id);
       });
       return found ? applyModuleMigration(collectionName, found) : null;
     }
@@ -237,7 +318,15 @@ export const DataService = {
       const docRef = doc(db, collectionName, id);
       const snapshot = await getDoc(docRef);
       if (snapshot.exists()) {
-        return applyModuleMigration(collectionName, { id: snapshot.id, ...snapshot.data() });
+        const rawData = snapshot.data();
+        if (collectionName === 'users') {
+          return applyModuleMigration(collectionName, {
+            ...rawData,
+            _firestoreDocId: snapshot.id,
+            id: rawData.id || snapshot.id
+          });
+        }
+        return applyModuleMigration(collectionName, { id: snapshot.id, ...rawData });
       }
       return null;
     } catch (error) {
@@ -247,6 +336,7 @@ export const DataService = {
 
   async update(collectionName, id, payload) {
     let data = applyModuleMigration(collectionName, payload);
+    await attachRepairSessionIdIfMissing(collectionName, data);
     if (!isFirebaseConfigured || !db) {
       // Fallback to LocalStorage dynamically
       console.warn(`Firebase not configured. Updating ${collectionName} in LocalStorage.`);
@@ -317,5 +407,39 @@ export const DataService = {
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `${collectionName}/${id}`);
     }
+  },
+
+  // repairSessions module
+  async saveRepairSession(payload) {
+    return await this.save('repairSessions', payload);
+  },
+  async getRepairSession(id) {
+    return await this.get('repairSessions', id);
+  },
+  async getAllRepairSessions() {
+    return await this.load('repairSessions');
+  },
+  async updateRepairSession(id, payload) {
+    return await this.update('repairSessions', id, payload);
+  },
+  async deleteRepairSession(id) {
+    return await this.delete('repairSessions', id);
+  },
+
+  // repairCampaigns module
+  async saveRepairCampaign(payload) {
+    return await this.save('repairCampaigns', payload);
+  },
+  async getRepairCampaign(id) {
+    return await this.get('repairCampaigns', id);
+  },
+  async getAllRepairCampaigns() {
+    return await this.load('repairCampaigns');
+  },
+  async updateRepairCampaign(id, payload) {
+    return await this.update('repairCampaigns', id, payload);
+  },
+  async deleteRepairCampaign(id) {
+    return await this.delete('repairCampaigns', id);
   }
 };

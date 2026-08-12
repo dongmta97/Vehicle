@@ -1,20 +1,38 @@
-import React, { useState, useEffect } from 'react';
-import { PlusCircle, FileText, Printer, FileDown, Trash2, Search } from 'lucide-react';
-import { Vehicle, DamageProtocol } from '../types';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { 
+  PlusCircle, 
+  FileText, 
+  Printer, 
+  FileDown, 
+  Trash2, 
+  Search, 
+  RefreshCw, 
+  Calendar, 
+  Layers, 
+  Folder, 
+  Truck, 
+  Activity,
+  ChevronDown,
+  ChevronRight
+} from 'lucide-react';
+import { Vehicle, DamageProtocol, RepairSession, RepairCampaign } from '../types';
 import { MilitaryInspectionForm } from './MilitaryInspectionForm';
 import { DetailedSelectionProtocolForm } from './DetailedSelectionProtocolForm';
 import { DamageProtocolList } from './DamageProtocolList';
 import { DamageProtocolForm } from './DamageProtocolForm';
-import HyundaiCountyTemplate from '../HyundaiCountyTemplate.json';
-import { formatVNTime } from '../utils/time';
+import { resolveHandoverTemplate, vehicleTemplates, selectionTemplates } from '../templates';
+import { formatVNTime, parseDate } from '../utils/time';
 import { canEditModule } from '../services/permissionService';
 import { canEditDocument } from '../services/ownershipService';
-import { getCurrentUserSession } from '../services/dbService';
+import { dbService, getCurrentUserSession, normalizePlate } from '../services/dbService';
 
 interface InspectionTabProps {
   viewMode: string;
   setViewMode: (mode: any) => void;
   selectedVehicle: Vehicle | null;
+  setSelectedVehicle?: (v: Vehicle | null) => void;
+  selectedRepairSession?: RepairSession | null;
+  onSelectRepairSession?: (s: RepairSession | null) => void;
   savedVehicles: Vehicle[];
   showDetailedInspectionForm: boolean;
   setShowDetailedInspectionForm: (show: boolean) => void;
@@ -28,12 +46,72 @@ interface InspectionTabProps {
   handleDeleteVehicleInspectionForm: (id: string) => Promise<void>;
   handlePrintDamageProtocol: (protocol: DamageProtocol) => void;
   currentUserRole?: string;
+  pendingOpenRequest?: any;
+  onClearPendingOpenRequest?: () => void;
+}
+
+interface TreeSessionNode {
+  session: RepairSession;
+  sessionId: string;
+  vehicleId: string;
+  plateNumber: string;
+  vehicleName: string;
+  repairNumber: number;
+  campaignId: string;
+  campaignName: string;
+  year: number;
+}
+
+interface TreeVehicleGroupNode {
+  key: string;
+  vehicleName: string;
+  sessions: TreeSessionNode[];
+}
+
+interface TreeCampaignNode {
+  key: string;
+  campaignId: string;
+  campaignCode: string;
+  campaignName: string;
+  year: number;
+  round?: number;
+  status: string;
+  vehicleGroups: TreeVehicleGroupNode[];
+  totalSessionsCount: number;
+}
+
+interface TreeYearNode {
+  key: string;
+  year: number;
+  campaigns: TreeCampaignNode[];
+  totalSessionsCount: number;
+}
+
+// Helper functions for RepairSession status
+export function isRepairSessionOpen(session: RepairSession | any): boolean {
+  if (!session) return false;
+  if (session.isDeleted === true) return false;
+  if (session.workflowState === 'HANDED_OVER') return false;
+  if (session.status === 'CLOSED') return false;
+  if (session.closedAt) return false;
+  return true;
+}
+
+export function isRepairSessionClosed(session: RepairSession | any): boolean {
+  if (!session) return false;
+  if (session.workflowState === 'HANDED_OVER' || session.status === 'CLOSED' || Boolean(session.closedAt)) {
+    return true;
+  }
+  return false;
 }
 
 export function InspectionTab({
   viewMode,
   setViewMode,
   selectedVehicle,
+  setSelectedVehicle,
+  selectedRepairSession,
+  onSelectRepairSession,
   savedVehicles,
   showDetailedInspectionForm,
   setShowDetailedInspectionForm,
@@ -46,7 +124,9 @@ export function InspectionTab({
   handleDeleteDamageProtocol,
   handleDeleteVehicleInspectionForm: originalHandleDeleteVehicleInspectionForm,
   handlePrintDamageProtocol,
-  currentUserRole
+  currentUserRole,
+  pendingOpenRequest,
+  onClearPendingOpenRequest
 }: InspectionTabProps) {
   
   const currentVehicleOrFallback = selectedVehicle || (savedVehicles.length > 0 ? savedVehicles[0] : null);
@@ -54,7 +134,7 @@ export function InspectionTab({
   const currentUser = getCurrentUserSession();
 
   const canModifyInspectionDocument = (document: any) => {
-    return canEdit && canEditDocument(currentUser, document);
+    return canEditDocument(currentUser, document, 'INSPECTION');
   };
 
   const handleDeleteVehicleInspectionForm = async (id: string) => {
@@ -66,16 +146,241 @@ export function InspectionTab({
     await originalHandleDeleteVehicleInspectionForm(id);
   };
 
-  // States specified by user requirements
-  const [selectedTemplate, setSelectedTemplate] = useState<any>(HyundaiCountyTemplate);
+  // State management
   const [activeFormMode, setActiveFormMode] = useState<'NONE' | 'GIAO_NHAN' | 'KIEM_CHON' | 'VIEW_PROTOCOL'>('NONE');
   const [protocolListTab, setProtocolListTab] = useState<'GIAO_NHAN' | 'KIEM_CHON'>('GIAO_NHAN');
   const [activeDetailedVehicle, setActiveDetailedVehicle] = useState<Vehicle | null>(currentVehicleOrFallback);
   const [activeDetailedFormId, setActiveDetailedFormId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Search filter derived states
+  // Tree View data & state
+  const [repairCampaigns, setRepairCampaigns] = useState<RepairCampaign[]>([]);
+  const [repairSessions, setRepairSessions] = useState<RepairSession[]>([]);
+  const [isLoadingTree, setIsLoadingTree] = useState<boolean>(true);
+  const [treeSearchQuery, setTreeSearchQuery] = useState<string>('');
+  const [selectedSession, setSelectedSession] = useState<RepairSession | null>(selectedRepairSession || null);
+
+  const [expandedYears, setExpandedYears] = useState<Record<string, boolean>>({});
+  const [expandedCampaigns, setExpandedCampaigns] = useState<Record<string, boolean>>({});
+  const [expandedVehicles, setExpandedVehicles] = useState<Record<string, boolean>>({});
+  const [expandedPlates, setExpandedPlates] = useState<Record<string, boolean>>({});
+
+  const isSearching = Boolean(treeSearchQuery.trim());
+
+  // Sync selectedSession when prop updates
+  useEffect(() => {
+    if (selectedRepairSession) {
+      setSelectedSession(selectedRepairSession);
+    }
+  }, [selectedRepairSession]);
+
+  // Load real campaigns and sessions from Firestore
+  const loadTreeData = useCallback(async () => {
+    setIsLoadingTree(true);
+    try {
+      const [cList, sList] = await Promise.all([
+        dbService.getAllRepairCampaigns(),
+        dbService.getAllRepairSessions()
+      ]);
+      setRepairCampaigns(cList || []);
+      setRepairSessions(sList || []);
+    } catch (err) {
+      console.error("Lỗi khi tải dữ liệu Tree trong InspectionTab:", err);
+    } finally {
+      setIsLoadingTree(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadTreeData();
+  }, [loadTreeData]);
+
+  const toggleYear = (y: string) => setExpandedYears((prev) => ({ ...prev, [y]: !prev[y] }));
+  const toggleCampaign = (y: string, c: string) => setExpandedCampaigns((prev) => ({ ...prev, [`${y}-${c}`]: !prev[`${y}-${c}`] }));
+  const toggleVehicle = (y: string, c: string, v: string) => setExpandedVehicles((prev) => ({ ...prev, [`${y}-${c}-${v}`]: !prev[`${y}-${c}-${v}`] }));
+  const togglePlate = (y: string, c: string, v: string, p: string) => setExpandedPlates((prev) => ({ ...prev, [`${y}-${c}-${v}-${p}`]: !prev[`${y}-${c}-${v}-${p}`] }));
+
+  const filteredSessionsForTree = useMemo(() => {
+    const q = treeSearchQuery.toLowerCase().trim();
+    if (!q) return repairSessions;
+    return repairSessions.filter((s) => {
+      if (s.isDeleted) return false;
+      const plate = (s.plateNumber || '').toLowerCase();
+      const vehicle = (s.vehicleName || '').toLowerCase();
+      const campaign = (s.campaignName || '').toLowerCase();
+      const numStr = s.repairNumber ? `lần sửa chữa ${s.repairNumber}` : 'lần sửa chữa 01';
+      const numOnly = s.repairNumber ? `lần ${s.repairNumber}` : '';
+
+      return (
+        plate.includes(q) ||
+        vehicle.includes(q) ||
+        campaign.includes(q) ||
+        numStr.includes(q) ||
+        numOnly.includes(q)
+      );
+    });
+  }, [repairSessions, treeSearchQuery]);
+
+  // Build 5-Level Tree Data (Năm -> Đợt sửa chữa -> Tên/chủng loại xe -> Biển số xe -> Lần sửa chữa)
+  const treeData = useMemo(() => {
+    const tree: Record<string, Record<string, Record<string, Record<string, RepairSession[]>>>> = {};
+
+    filteredSessionsForTree.forEach((s) => {
+      if (s.isDeleted) return;
+
+      const year = (s.openedAt ? parseDate(s.openedAt)?.getFullYear().toString() : null) || 
+        (s.createdAt ? parseDate(s.createdAt)?.getFullYear().toString() : null) || 
+        '2026';
+
+      const matchedCampaign = repairCampaigns.find((c) => c.id === s.campaignId && !c.isDeleted);
+      const campaign = s.campaignName || matchedCampaign?.campaignName || 'Chưa xác định đợt sửa chữa';
+
+      const matchedVeh = (savedVehicles || []).find(
+        (v) =>
+          v.vehicleId === s.vehicleId ||
+          normalizePlate(v.plateNumber || '') === normalizePlate(s.plateNumber || '') ||
+          normalizePlate(v.vehicleId || '') === normalizePlate(s.vehicleId || '')
+      );
+      const matchedDp = allDamageProtocols.find(
+        (dp) =>
+          dp.protocolId === s.damageProtocolId ||
+          dp.vehicleId === s.vehicleId ||
+          normalizePlate(dp.plateNumber || '') === normalizePlate(s.plateNumber || '')
+      );
+      const vehicleName =
+        matchedVeh?.brand ||
+        (matchedVeh as any)?.vehicleName ||
+        s.vehicleName ||
+        matchedDp?.brand ||
+        matchedDp?.vehicleType ||
+        'Xe chưa xác định';
+
+      const plate = s.plateNumber || matchedVeh?.plateNumber || s.vehicleId || 'Chưa rõ';
+
+      if (!tree[year]) tree[year] = {};
+      if (!tree[year][campaign]) tree[year][campaign] = {};
+      if (!tree[year][campaign][vehicleName]) tree[year][campaign][vehicleName] = {};
+      if (!tree[year][campaign][vehicleName][plate]) tree[year][campaign][vehicleName][plate] = [];
+
+      tree[year][campaign][vehicleName][plate].push(s);
+    });
+
+    Object.keys(tree).forEach((y) => {
+      Object.keys(tree[y]).forEach((c) => {
+        Object.keys(tree[y][c]).forEach((v) => {
+          Object.keys(tree[y][c][v]).forEach((p) => {
+            tree[y][c][v][p].sort((a, b) => (a.repairNumber || 1) - (b.repairNumber || 1));
+          });
+        });
+      });
+    });
+
+    return tree;
+  }, [filteredSessionsForTree, repairCampaigns, savedVehicles, allDamageProtocols]);
+
+  // Mandatory debug logs requested by user
+  useEffect(() => {
+    console.log('[InspectionTab] repairCampaigns:', repairCampaigns);
+    console.log('[InspectionTab] repairSessions:', repairSessions);
+    console.log('[InspectionTab] Tree data:', treeData);
+  }, [repairCampaigns, repairSessions, treeData]);
+
+  const [targetSessionId, setTargetSessionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // 1. If prop selectedRepairSession is provided, prioritize it
+    if (selectedRepairSession) {
+      setSelectedSession(selectedRepairSession);
+      setTargetSessionId(selectedRepairSession.id);
+      return;
+    }
+
+    // 2. Keep existing selectedSession / targetSessionId if valid
+    if (targetSessionId || selectedSession) {
+      const currentId = targetSessionId || selectedSession?.id;
+      const matched = repairSessions.find(s => s.id === currentId && !s.isDeleted);
+      if (matched) {
+        setSelectedSession(matched);
+        setTargetSessionId(matched.id);
+        return;
+      }
+    }
+
+    // 3. Fallback to selectedVehicle if no session currently selected
+    if (selectedVehicle) {
+      const normVId = normalizePlate(selectedVehicle.vehicleId || '');
+      const normVPlate = normalizePlate(selectedVehicle.plateNumber || '');
+
+      const vehicleSessions = repairSessions.filter((s) => {
+        if (s.isDeleted) return false;
+        const normSId = normalizePlate(s.vehicleId || '');
+        const normSPlate = normalizePlate(s.plateNumber || '');
+        return (normVId && normSId === normVId) ||
+               (normVPlate && normSPlate === normVPlate) ||
+               (normVId && normSPlate === normVId) ||
+               (normVPlate && normSId === normVPlate);
+      });
+
+      const openSession = vehicleSessions.find((s) => isRepairSessionOpen(s));
+      if (openSession) {
+        setSelectedSession(openSession);
+        setTargetSessionId(openSession.id);
+      } else if (vehicleSessions.length > 0) {
+        vehicleSessions.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        setSelectedSession(vehicleSessions[0]);
+        setTargetSessionId(vehicleSessions[0].id);
+      } else {
+        setSelectedSession(null);
+        setTargetSessionId(null);
+      }
+    } else {
+      setSelectedSession(null);
+      setTargetSessionId(null);
+    }
+  }, [selectedRepairSession, selectedVehicle, repairSessions]);
+
+  // Handle tree session selection
+  const handleSelectTreeSession = (s: RepairSession) => {
+    console.log('[InspectionTab] SELECT SESSION', {
+      sessionId: s?.id,
+      plateNumber: s?.plateNumber,
+      repairNumber: s?.repairNumber,
+      workflowState: s?.workflowState,
+      status: s?.status,
+      closedAt: s?.closedAt
+    });
+
+    setSelectedSession(s);
+    setTargetSessionId(s.id);
+    onSelectRepairSession?.(s);
+
+    const matchedVehicle = savedVehicles.find(v => 
+      (v.vehicleId && s.vehicleId && v.vehicleId === s.vehicleId) || 
+      (v.plateNumber && s.plateNumber && normalizePlate(v.plateNumber) === normalizePlate(s.plateNumber))
+    ) || {
+      vehicleId: s.vehicleId || s.plateNumber,
+      plateNumber: s.plateNumber || s.vehicleId,
+      brand: s.vehicleName || 'Xe chưa xác định',
+      vehicleType: 'Xe quân sự',
+      chassisNumber: '',
+      engineNumber: '',
+    } as Vehicle;
+
+    setSelectedVehicle?.(matchedVehicle);
+    setActiveDetailedVehicle(matchedVehicle);
+
+    // Keep right panel in list mode ("DANH SÁCH BIÊN BẢN ĐÃ LƯU")
+    setActiveFormMode('NONE');
+  };
+
+  // Search & Filter derived state for right-side saved protocols
   const filteredDamageProtocols = allDamageProtocols.filter(p => {
+    if (targetSessionId) {
+      if (p.repairSessionId !== targetSessionId) return false;
+    } else if (selectedVehicle) {
+      if (p.vehicleId !== selectedVehicle.vehicleId && p.plateNumber !== selectedVehicle.plateNumber) return false;
+    }
+
     const q = searchQuery.toLowerCase().trim();
     if (!q) return true;
     const pPlate = (p.plateNumber || '').toLowerCase();
@@ -89,6 +394,12 @@ export function InspectionTab({
   });
 
   const filteredVehicleInspectionForms = allVehicleInspectionForms.filter(form => {
+    if (targetSessionId) {
+      if (form.repairSessionId !== targetSessionId) return false;
+    } else if (selectedVehicle) {
+      if (form.vehicleId !== selectedVehicle.vehicleId) return false;
+    }
+    
     const q = searchQuery.toLowerCase().trim();
     if (!q) return true;
     const vehicleInfo = savedVehicles.find(v => v.vehicleId === form.vehicleId);
@@ -107,7 +418,19 @@ export function InspectionTab({
     }
   }, [selectedVehicle]);
 
-  // Find which vehicles actually have damage protocols (biên bản giao nhận)
+  useEffect(() => {
+    if (pendingOpenRequest && pendingOpenRequest.module === 'INSPECTION' && pendingOpenRequest.formType === 'DAMAGE_PROTOCOL') {
+      const recordId = pendingOpenRequest.recordId;
+      const matched = allDamageProtocols.find(p => p.protocolId === recordId || (p as any).id === recordId);
+      if (matched) {
+        setCurrentInspection(matched);
+        setActiveFormMode('GIAO_NHAN');
+      }
+      onClearPendingOpenRequest?.();
+    }
+  }, [pendingOpenRequest, allDamageProtocols, onClearPendingOpenRequest]);
+
+  // Build list of vehicles for selection in form dropdowns
   let availableVehiclesForSelection = savedVehicles.filter(v => {
     const normVId = (v.vehicleId || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
     const normVPlate = (v.plateNumber || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
@@ -119,19 +442,17 @@ export function InspectionTab({
     });
   });
 
-  // Deduplicate initial availableVehiclesForSelection
   availableVehiclesForSelection = availableVehiclesForSelection.filter((v, i, self) => 
     i === self.findIndex((t) => t.vehicleId === v.vehicleId)
   );
 
-  // Also include vehicles created virtually out of allDamageProtocols or allVehicleInspectionForms in case they were deleted from savedVehicles
   allDamageProtocols.forEach(p => {
     const id = p.vehicleId || p.plateNumber;
     if (id && !availableVehiclesForSelection.some(v => v.vehicleId === id || v.plateNumber === id || v.plateNumber === p.plateNumber)) {
       availableVehiclesForSelection.push({
         vehicleId: id,
         plateNumber: p.plateNumber || id || 'Không rõ',
-        brand: p.brand || 'Hyundai County',
+        brand: p.brand || '',
         vehicleType: p.vehicleType || 'Xe quân sự',
         vehicleGroup: '',
         chassisNumber: p.chassisNumber || '',
@@ -150,7 +471,7 @@ export function InspectionTab({
       availableVehiclesForSelection.push({
         vehicleId: id,
         plateNumber: id || 'Không rõ',
-        brand: f.vehicleName || 'Hyundai County',
+        brand: f.vehicleName || '',
         vehicleType: 'Xe quân sự',
         vehicleGroup: '',
         chassisNumber: '',
@@ -172,7 +493,6 @@ export function InspectionTab({
   const [currentInspection, setCurrentInspection] = useState<any>(emptyInspection);
   const [viewedProtocol, setViewedProtocol] = useState<DamageProtocol | null>(null);
 
-  // Sync state if selectedVehicle updates
   useEffect(() => {
     setCurrentInspection({
       headerData: {},
@@ -186,45 +506,65 @@ export function InspectionTab({
       alert('Bạn chỉ có quyền xem dữ liệu.');
       return;
     }
+    const currentSession = selectedSession || selectedRepairSession;
+    if (currentSession && isRepairSessionClosed(currentSession)) {
+      alert('Hồ sơ sửa chữa lần này đã hoàn tất bàn giao và đã đóng. Không thể lập thêm biên bản cho hồ sơ này.');
+      return;
+    }
+    const currentSessionId = targetSessionId || currentSession?.id;
+    if (!currentSessionId) {
+      alert('Không xác định được hồ sơ sửa chữa. Vui lòng chọn đúng Lần sửa chữa trước khi lập biên bản.');
+      return;
+    }
     setActiveFormMode('GIAO_NHAN');
+    const v = activeDetailedVehicle || selectedVehicle || currentVehicleOrFallback;
     setCurrentInspection({
+      repairSessionId: currentSessionId,
+      templateCode: currentSession.handoverTemplateCode,
       headerData: {
         reportNo: '',
         docDate: 'Gia Lai, ngày      tháng      năm 2026',
         repairLevel: '',
         repairGroup: '',
-        vehicleName: currentVehicleOrFallback?.brand || 'Hyundai County',
-        plateNumber: currentVehicleOrFallback?.plateNumber || '',
-        chassisNumber: currentVehicleOrFallback?.chassisNumber || '',
-        actualChassisNumber: currentVehicleOrFallback?.chassisNumber || '',
-        engineNumber: currentVehicleOrFallback?.engineNumber || '',
-        actualEngineNumber: currentVehicleOrFallback?.engineNumber || '',
-        giverUnit: (currentVehicleOrFallback as any)?.unit || (currentVehicleOrFallback as any)?.createdByUnit || ''
+        vehicleName: undefined,
+        plateNumber: v?.plateNumber || '',
+        chassisNumber: v?.chassisNumber || '',
+        actualChassisNumber: v?.chassisNumber || '',
+        engineNumber: v?.engineNumber || '',
+        actualEngineNumber: v?.engineNumber || '',
+        giverUnit: (v as any)?.unit || (v as any)?.createdByUnit || ''
       },
       formData: {},
-      vehicle: currentVehicleOrFallback
+      vehicle: v
     });
   };
 
+  const createNewSelection = () => {
+    if (!canEdit) {
+      alert('Bạn chỉ có quyền xem dữ liệu.');
+      return;
+    }
+    const currentSession = selectedSession || selectedRepairSession;
+    if (currentSession && isRepairSessionClosed(currentSession)) {
+      alert('Hồ sơ sửa chữa lần này đã hoàn tất bàn giao và đã đóng. Không thể lập thêm biên bản cho hồ sơ này.');
+      return;
+    }
+    const currentSessionId = targetSessionId || currentSession?.id;
+    if (!currentSessionId) {
+      alert('Không xác định được hồ sơ sửa chữa. Vui lòng chọn đúng Lần sửa chữa trước khi lập biên bản.');
+      return;
+    }
+    setActiveDetailedVehicle(activeDetailedVehicle || selectedVehicle || currentVehicleOrFallback);
+    setActiveDetailedFormId(null);
+    setActiveFormMode('KIEM_CHON');
+  };
+
   const resetForm = () => {
-    // Only reset values inside the form, template and isFormOpen stay untouched
     setCurrentInspection((prev: any) => ({
       ...prev,
       headerData: {},
       formData: {}
     }));
-  };
-
-  const handleTạoBiênBản = () => {
-    const hasValues = currentInspection && (
-      (currentInspection.headerData && Object.keys(currentInspection.headerData).length > 0) ||
-      (currentInspection.formData && Object.keys(currentInspection.formData).length > 0)
-    );
-    if (!hasValues) {
-      createNewInspection();
-    } else {
-      resetForm();
-    }
   };
 
   const handleDeleteAndSync = async (id: string) => {
@@ -245,74 +585,181 @@ export function InspectionTab({
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start font-sans animate-fade-in mt-3">
-      {/* 1. Left saved protocols sidebar list */}
+      {/* 1. Left TREE VIEW column */}
       <div className="lg:col-span-4 lg:sticky lg:top-4 space-y-4">
-        <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 md:p-5 overflow-hidden animate-fade-in">
-          <div className="flex items-center gap-2 border-b border-stone-150 pb-3 mb-4">
-            <FileText className="h-5 w-5 text-yellow-600" />
-            <h3 className="font-bold text-stone-900 text-sm tracking-tight uppercase">
-              Danh mục biên bản
-            </h3>
+        <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 md:p-5 overflow-hidden animate-fade-in space-y-4">
+          
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-stone-150 pb-3">
+            <div className="flex items-center gap-2">
+              <Layers className="h-5 w-5 text-emerald-800" />
+              <h3 className="font-extrabold text-stone-900 text-sm tracking-tight uppercase">
+                Danh mục hồ sơ
+              </h3>
+            </div>
+            <button
+              onClick={loadTreeData}
+              className="p-1.5 text-stone-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-all cursor-pointer"
+              title="Làm mới cây danh mục"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoadingTree ? 'animate-spin text-emerald-600' : ''}`} />
+            </button>
           </div>
 
-          <div className="space-y-3 mb-6">
-            <div 
-              className={`p-3 rounded-xl border transition-all cursor-pointer ${activeFormMode === 'NONE' || activeFormMode === 'VIEW_PROTOCOL' ? 'bg-emerald-50 border-emerald-300 shadow-sm' : 'bg-stone-50 border-stone-200 hover:border-emerald-300 hover:bg-white'}`}
-              onClick={() => {
-                resetForm();
-                setActiveFormMode('NONE');
-              }}
-            >
-              <div className="flex items-center gap-2">
-                <FileText className={`h-5 w-5 ${activeFormMode === 'NONE' || activeFormMode === 'VIEW_PROTOCOL' ? 'text-emerald-700' : 'text-stone-400'}`} />
-                <div>
-                  <h5 className={`font-bold text-sm ${activeFormMode === 'NONE' || activeFormMode === 'VIEW_PROTOCOL' ? 'text-emerald-800' : 'text-stone-700'}`}>Danh sách biên bản</h5>
-                  <p className="text-[11px] text-stone-500 mt-0.5">Quản lý các biên bản đã lưu trữ...</p>
-                </div>
+          {/* Search box inside Tree */}
+          <div className="relative">
+            <Search className="h-3.5 w-3.5 text-stone-400 absolute left-3 top-2.5" />
+            <input
+              type="text"
+              placeholder="Tìm đợt, loại xe, biển số..."
+              value={treeSearchQuery}
+              onChange={(e) => setTreeSearchQuery(e.target.value)}
+              className="w-full pl-8 pr-3 py-1.5 bg-stone-50 border border-stone-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
+            />
+            {treeSearchQuery && (
+              <button 
+                onClick={() => setTreeSearchQuery('')} 
+                className="absolute right-2.5 top-2 text-stone-400 hover:text-stone-600 text-xs font-bold"
+              >
+                ×
+              </button>
+            )}
+          </div>
+
+          {/* 5-Level Tree View */}
+          <div className="space-y-1 text-xs select-none max-h-[620px] overflow-y-auto pr-1 font-sans">
+            {isLoadingTree ? (
+              <div className="text-center py-8 text-xs text-emerald-700 font-semibold animate-pulse flex flex-col items-center gap-2">
+                <RefreshCw className="h-5 w-5 animate-spin text-emerald-600" />
+                <span>Đang tải danh mục hồ sơ...</span>
               </div>
-            </div>
+            ) : Object.keys(treeData).length === 0 ? (
+              <div className="text-center py-8 text-xs text-stone-500 italic bg-stone-50 border border-dashed border-stone-200 rounded-xl p-4">
+                {treeSearchQuery ? 'Không tìm thấy hồ sơ phù hợp.' : 'Chưa có đợt hoặc hồ sơ sửa chữa nào.'}
+              </div>
+            ) : (
+              Object.keys(treeData).sort((a, b) => b.localeCompare(a)).map((year) => {
+                const isYearExpanded = isSearching || Boolean(expandedYears[year]);
+                const campaignsObj = treeData[year];
 
-            {canEdit && (
-              <>
-                <div 
-                  className={`p-3 rounded-xl border transition-all cursor-pointer ${activeFormMode === 'GIAO_NHAN' ? 'bg-emerald-50 border-emerald-300 shadow-sm' : 'bg-stone-50 border-stone-200 hover:border-emerald-300 hover:bg-white'}`}
-                  onClick={() => {
-                    createNewInspection();
-                    setActiveFormMode('GIAO_NHAN');
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <FileText className={`h-5 w-5 ${activeFormMode === 'GIAO_NHAN' ? 'text-emerald-700' : 'text-stone-400'}`} />
-                    <div>
-                      <h5 className={`font-bold text-sm ${activeFormMode === 'GIAO_NHAN' ? 'text-emerald-800' : 'text-stone-700'}`}>Lập biên bản giao nhận</h5>
-                      <p className="text-[11px] text-stone-500 mt-0.5">Biểu mẫu giám định tình trạng kỹ thuật...</p>
+                return (
+                  <div key={year} className="mb-1">
+                    {/* Cấp 1: Năm */}
+                    <div 
+                      className="flex items-center gap-1.5 cursor-pointer py-1.5 px-2 hover:bg-stone-100 rounded-lg text-stone-800 font-bold transition-colors"
+                      onClick={() => toggleYear(year)}
+                    >
+                      {isYearExpanded ? <ChevronDown className="w-4 h-4 text-emerald-700 shrink-0" /> : <ChevronRight className="w-4 h-4 text-stone-400 shrink-0" />}
+                      <Calendar className="w-4 h-4 text-emerald-700 shrink-0" />
+                      <span>{year}</span>
                     </div>
-                  </div>
-                </div>
 
-                <div 
-                  className={`p-3 rounded-xl border transition-all cursor-pointer ${activeFormMode === 'KIEM_CHON' ? 'bg-emerald-50 border-emerald-300 shadow-sm' : 'bg-stone-50 border-stone-200 hover:border-emerald-300 hover:bg-white'}`}
-                  onClick={() => {
-                    setActiveDetailedFormId(null);
-                    setActiveDetailedVehicle(selectedVehicle || currentVehicleOrFallback);
-                    setActiveFormMode('KIEM_CHON');
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <FileText className={`h-5 w-5 ${activeFormMode === 'KIEM_CHON' ? 'text-emerald-700' : 'text-stone-400'}`} />
-                    <div>
-                      <h5 className={`font-bold text-sm ${activeFormMode === 'KIEM_CHON' ? 'text-emerald-800' : 'text-stone-700'}`}>Biên bản kiểm chọn</h5>
-                      <p className="text-[11px] text-stone-500 mt-0.5">Biểu mẫu kiểm tra tình trạng Hỏng/Thiếu/Sửa chữa...</p>
-                    </div>
+                    {isYearExpanded && (
+                      <div className="pl-3 border-l border-stone-200 ml-3.5 space-y-0.5 mt-0.5">
+                        {Object.keys(campaignsObj).map((campaign) => {
+                          const campaignKey = `${year}-${campaign}`;
+                          const isCampaignExpanded = isSearching || Boolean(expandedCampaigns[campaignKey]);
+                          const vehiclesObj = campaignsObj[campaign];
+
+                          return (
+                            <div key={campaign}>
+                              {/* Cấp 2: Đợt sửa chữa */}
+                              <div 
+                                className="flex items-center gap-1.5 cursor-pointer py-1 px-2 hover:bg-stone-100 rounded-lg text-stone-700 font-semibold text-xs transition-colors"
+                                onClick={() => toggleCampaign(year, campaign)}
+                              >
+                                {isCampaignExpanded ? <ChevronDown className="w-3.5 h-3.5 text-emerald-700 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />}
+                                <Folder className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                <span className="truncate">{campaign}</span>
+                              </div>
+
+                              {isCampaignExpanded && (
+                                <div className="pl-3 border-l border-stone-200 ml-3 space-y-0.5 mt-0.5">
+                                  {Object.keys(vehiclesObj).map((vehicle) => {
+                                    const vehicleKey = `${year}-${campaign}-${vehicle}`;
+                                    const isVehicleExpanded = isSearching || Boolean(expandedVehicles[vehicleKey]);
+                                    const platesObj = vehiclesObj[vehicle];
+
+                                    return (
+                                      <div key={vehicle}>
+                                        {/* Cấp 3: Tên/chủng loại xe */}
+                                        <div 
+                                          className="flex items-center gap-1.5 cursor-pointer py-1 px-2 hover:bg-stone-100 rounded-lg text-stone-700 text-xs font-medium transition-colors"
+                                          onClick={() => toggleVehicle(year, campaign, vehicle)}
+                                        >
+                                          {isVehicleExpanded ? <ChevronDown className="w-3.5 h-3.5 text-emerald-700 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />}
+                                          <Truck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                          <span className="truncate">{vehicle}</span>
+                                        </div>
+
+                                        {isVehicleExpanded && (
+                                          <div className="pl-3 border-l border-stone-200 ml-3 space-y-0.5 mt-0.5">
+                                            {Object.keys(platesObj).map((plate) => {
+                                              const plateKey = `${year}-${campaign}-${vehicle}-${plate}`;
+                                              const isPlateExpanded = isSearching || Boolean(expandedPlates[plateKey]);
+                                              const sessionsList = platesObj[plate];
+
+                                              return (
+                                                <div key={plate}>
+                                                  {/* Cấp 4: Biển số xe */}
+                                                  <div 
+                                                    className="flex items-center gap-1.5 cursor-pointer py-1 px-2 hover:bg-stone-100 rounded-lg text-stone-600 text-xs transition-colors"
+                                                    onClick={() => togglePlate(year, campaign, vehicle, plate)}
+                                                  >
+                                                    {isPlateExpanded ? <ChevronDown className="w-3 h-3 text-emerald-700 shrink-0" /> : <ChevronRight className="w-3 h-3 text-stone-400 shrink-0" />}
+                                                    <span className="font-mono font-bold text-stone-800">{plate}</span>
+                                                  </div>
+
+                                                  {isPlateExpanded && (
+                                                    <div className="pl-3 py-1 space-y-1">
+                                                      {sessionsList.map((session: RepairSession, idx: number) => {
+                                                        const isSelected = selectedSession?.id === session.id || targetSessionId === session.id;
+                                                        const sessionNumberStr = `Lần sửa chữa ${String(session.repairNumber || idx + 1).padStart(2, '0')}`;
+
+                                                        return (
+                                                          /* Cấp 5: Lần sửa chữa */
+                                                          <div 
+                                                            key={session.id}
+                                                            className={`flex items-center justify-between py-1.5 px-2.5 rounded-lg cursor-pointer transition-all text-xs ${
+                                                              isSelected 
+                                                                ? 'bg-emerald-100 text-emerald-900 font-bold border border-emerald-300 shadow-2xs' 
+                                                                : 'hover:bg-stone-100 text-stone-600 font-medium'
+                                                            }`}
+                                                            onClick={() => handleSelectTreeSession(session)}
+                                                          >
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                              <div className={`w-2 h-2 rounded-full shrink-0 ${isSelected ? 'bg-emerald-600 ring-2 ring-emerald-300' : 'bg-stone-400'}`}></div>
+                                                              <span className="truncate">{sessionNumberStr}</span>
+                                                            </div>
+                                                          </div>
+                                                        );
+                                                      })}
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                </div>
-              </>
+                );
+              })
             )}
           </div>
         </div>
       </div>
 
-      {/* 2. Right/Main Detailed Form layout */}
+      {/* 2. Right/Main Detailed Form layout (GIỮ NGUYÊN) */}
       <div className="lg:col-span-8 space-y-6">
         <div className="bg-white p-4 md:p-6 rounded-2xl border border-stone-200 shadow-sm animate-fade-in flex flex-col h-full min-h-[500px]">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 pb-3 border-b border-stone-150">
@@ -329,7 +776,7 @@ export function InspectionTab({
               </p>
             </div>
             
-            {activeFormMode !== 'NONE' && (
+            {activeFormMode !== 'NONE' ? (
               <button
                 onClick={() => {
                   resetForm();
@@ -340,14 +787,36 @@ export function InspectionTab({
               >
                 <span>Đóng không gian hiển thị</span>
               </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                {protocolListTab === 'GIAO_NHAN' && canEdit && (
+                  <button
+                    onClick={() => createNewInspection()}
+                    className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <PlusCircle className="h-4 w-4" />
+                    <span>Lập biên bản giao nhận</span>
+                  </button>
+                )}
+                {protocolListTab === 'KIEM_CHON' && canEdit && (
+                  <button
+                    onClick={() => createNewSelection()}
+                    className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <PlusCircle className="h-4 w-4" />
+                    <span>Lập biên bản kiểm chọn</span>
+                  </button>
+                )}
+              </div>
             )}
           </div>
 
           <div className="flex-1 flex flex-col">
             {activeFormMode === 'GIAO_NHAN' ? (
               <MilitaryInspectionForm
-                vehicle={currentVehicleOrFallback}
+                vehicle={activeDetailedVehicle || selectedVehicle || currentVehicleOrFallback}
                 initialForm={currentInspection}
+                repairSessionId={targetSessionId || selectedSession?.id || selectedRepairSession?.id || undefined}
                 currentUserRole={currentUserRole}
                 onClose={async () => {
                   resetForm();
@@ -359,10 +828,6 @@ export function InspectionTab({
                     if (savedForm) {
                       setActiveFormMode('NONE');
                     }
-                  } else {
-                    // Running in the background silently.
-                    // Do NOT update currentInspection or trigger loadAllDamageProtocols
-                    // because it causes the form to re-render and interrupts user typing.
                   }
                 }}
                 onReset={resetForm}
@@ -412,8 +877,10 @@ export function InspectionTab({
                       </div>
                       <div className="p-2 pointer-events-none opacity-95 relative">
                          <DetailedSelectionProtocolForm 
-                           vehicle={{ vehicleId: viewedProtocol.vehicleId, plateNumber: (viewedProtocol as any).plateNumber, brand: 'Hyundai County' } as any}
+                           vehicle={{ vehicleId: viewedProtocol.vehicleId, plateNumber: (viewedProtocol as any).plateNumber, brand: viewedProtocol.brand || (viewedProtocol as any).vehicleName || '' } as any}
                            savedVehicles={availableVehiclesForSelection}
+                           repairSessionId={targetSessionId || selectedSession?.id || selectedRepairSession?.id || undefined}
+                           templateCode={selectedSession?.selectionTemplateCode || undefined}
                            onClose={() => {}}
                            currentUserRole={currentUserRole}
                          />
@@ -421,9 +888,8 @@ export function InspectionTab({
                       <div className="p-4 bg-stone-50 border-t border-stone-200 text-center">
                         <button 
                           onClick={() => { 
-                            setActiveDetailedVehicle({ vehicleId: viewedProtocol.vehicleId, plateNumber: (viewedProtocol as any).plateNumber, brand: 'Hyundai County' } as any);
-                            setActiveDetailedFormId(null); 
-                            setActiveFormMode('KIEM_CHON'); 
+                            setActiveDetailedVehicle({ vehicleId: viewedProtocol.vehicleId, plateNumber: (viewedProtocol as any).plateNumber, brand: viewedProtocol.brand || (viewedProtocol as any).vehicleName || '' } as any);
+                            createNewSelection();
                           }} 
                           className="px-6 py-2 pointer-events-auto bg-blue-600 cursor-pointer text-white rounded-lg font-bold shadow hover:bg-blue-700 transition"
                         >
@@ -435,9 +901,11 @@ export function InspectionTab({
               </div>
             ) : activeFormMode === 'KIEM_CHON' ? (
               <DetailedSelectionProtocolForm
-                vehicle={activeDetailedVehicle || currentVehicleOrFallback}
+                vehicle={activeDetailedVehicle || selectedVehicle || currentVehicleOrFallback}
                 savedVehicles={availableVehiclesForSelection}
                 initialFormId={activeDetailedFormId}
+                repairSessionId={targetSessionId || selectedSession?.id || selectedRepairSession?.id || undefined}
+                templateCode={selectedSession?.selectionTemplateCode || undefined}
                 currentUserRole={currentUserRole}
                 onClose={() => setActiveFormMode('NONE')}
                 onSaveSuccess={async () => {
@@ -446,7 +914,7 @@ export function InspectionTab({
               />
             ) : (
               <div className="flex-1 flex flex-col p-2">
-                
+
                 {/* Search Bar */}
                 <div className="mb-4 relative max-w-md">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -455,92 +923,118 @@ export function InspectionTab({
                   <input
                     type="text"
                     placeholder="Tìm theo số đăng ký xe, tên xe hoặc số biên bản..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    value={typeof (searchQuery) === 'string' ? (searchQuery).normalize('NFC') : (searchQuery)}
+                    onChange={(e) => setSearchQuery(e.target.value.normalize('NFC'))}
                     className="block w-full pl-10 pr-3 py-2 border border-stone-200 rounded-lg text-sm bg-stone-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium placeholder:font-normal text-stone-800"
                   />
                 </div>
 
-                {/* Tabs */}
-                <div className="flex flex-wrap gap-2 mb-6 border-b border-stone-200 pb-2">
+                {/* Subtabs */}
+                <div className="flex flex-wrap sm:flex-nowrap gap-2 mb-6 border-b border-stone-200 pb-3">
                   <button
                     onClick={() => setProtocolListTab('GIAO_NHAN')}
-                    className={`px-4 py-2 rounded-t-lg font-bold text-sm transition-colors ${
+                    className={`flex-1 sm:flex-none text-center px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
                       protocolListTab === 'GIAO_NHAN'
-                        ? 'bg-emerald-50 text-emerald-800 border-b-2 border-emerald-600'
-                        : 'text-stone-500 hover:text-stone-800 hover:bg-stone-50'
+                        ? 'bg-emerald-800 text-white shadow-sm ring-1 ring-emerald-700'
+                        : 'bg-stone-100 text-stone-700 hover:text-emerald-900 hover:bg-stone-200/80 border border-stone-200'
                     }`}
                   >
                     Biên bản giao nhận TBKT
                   </button>
                   <button
                     onClick={() => setProtocolListTab('KIEM_CHON')}
-                    className={`px-4 py-2 rounded-t-lg font-bold text-sm transition-colors ${
+                    className={`flex-1 sm:flex-none text-center px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
                       protocolListTab === 'KIEM_CHON'
-                        ? 'bg-emerald-50 text-emerald-800 border-b-2 border-emerald-600'
-                        : 'text-stone-500 hover:text-stone-800 hover:bg-stone-50'
+                        ? 'bg-emerald-800 text-white shadow-sm ring-1 ring-emerald-700'
+                        : 'bg-stone-100 text-stone-700 hover:text-emerald-900 hover:bg-stone-200/80 border border-stone-200'
                     }`}
                   >
                     Biên bản kiểm chọn chi tiết
                   </button>
                 </div>
 
-                {protocolListTab === 'GIAO_NHAN' && (
-                  allDamageProtocols.length === 0 ? (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center p-10 bg-stone-50 rounded-xl border border-dashed border-stone-300">
-                      <div className="h-16 w-16 bg-stone-100 rounded-full flex items-center justify-center mb-4 text-stone-400">
-                        <FileText className="h-8 w-8" />
-                      </div>
-                      <h3 className="text-sm font-bold text-stone-700 mb-2">Chưa có biên bản giao nhận nào</h3>
-                      <p className="text-xs text-stone-500 max-w-sm mb-6">Bạn chưa lập biên bản nào. Vui lòng bấm vào "Lập biên bản giao nhận" để tạo mới.</p>
-                      {canEdit && (
-                        <button
-                          onClick={() => {
-                            createNewInspection();
+                {protocolListTab === 'GIAO_NHAN' && (() => {
+                  console.log('[InspectionTab] HANDOVER CONTEXT', {
+                    targetSessionId,
+                    selectedSessionId: selectedSession?.id,
+                    selectedPlate: selectedSession?.plateNumber,
+                    handoverCount: filteredDamageProtocols?.length
+                  });
+
+                  if (filteredDamageProtocols.length > 0) {
+                    return (
+                      <div className="animate-fade-in">
+                        <DamageProtocolList
+                          protocols={filteredDamageProtocols}
+                          onDeleteProtocol={handleDeleteAndSync}
+                          activeProtocolId={activeFormMode === 'VIEW_PROTOCOL' ? viewedProtocol?.protocolId : undefined}
+                          onPrintSelect={(protocol) => {
+                            setCurrentInspection(protocol);
                             setActiveFormMode('GIAO_NHAN');
                           }}
+                          onViewSelect={(protocol) => {
+                            setCurrentInspection(protocol);
+                            setActiveFormMode('GIAO_NHAN');
+                          }}
+                          currentUserRole={currentUserRole}
+                        />
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-10 bg-stone-50 rounded-xl border border-dashed border-stone-300">
+                      <div className="h-16 w-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mb-4">
+                        <FileText className="h-8 w-8" />
+                      </div>
+                      
+                      {searchQuery ? (
+                        <>
+                          <h3 className="text-sm font-bold text-stone-800 mb-1">Không tìm thấy biên bản phù hợp</h3>
+                          <p className="text-xs text-stone-500 mb-6">Đã tìm kiếm với từ khóa "{searchQuery}".</p>
+                        </>
+                      ) : selectedSession ? (
+                        <>
+                          <h3 className="text-sm font-bold text-stone-800 mb-1">
+                            Chưa có biên bản giao nhận cho {selectedSession.plateNumber || 'xe này'} (Lần {selectedSession.repairNumber || 1})
+                          </h3>
+                          <p className="text-xs text-stone-500 max-w-md mb-6">
+                            Hồ sơ sửa chữa này chưa lập biên bản giao nhận vũ khí, trang bị kỹ thuật. Vui lòng nhấn nút bên dưới để lập biên bản.
+                          </p>
+                        </>
+                      ) : selectedVehicle ? (
+                        <>
+                          <h3 className="text-sm font-bold text-stone-800 mb-1">
+                            Chưa có biên bản giao nhận cho xe {selectedVehicle.plateNumber}
+                          </h3>
+                          <p className="text-xs text-stone-500 max-w-md mb-6">
+                            Vui lòng chọn đúng Lần sửa chữa từ danh mục bên trái hoặc nhấn nút để tạo mới biên bản giao nhận.
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <h3 className="text-sm font-bold text-stone-800 mb-1">Chưa có biên bản giao nhận nào</h3>
+                          <p className="text-xs text-stone-500 max-w-md mb-6">
+                            Chưa có biên bản giao nhận nào trong danh mục hiện tại.
+                          </p>
+                        </>
+                      )}
+
+                      {canEdit && (
+                        <button
+                          onClick={() => createNewInspection()}
                           className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-2 cursor-pointer shadow-sm shadow-emerald-600/20"
                         >
                           <PlusCircle className="h-4 w-4" />
-                          <span>Lập biên bản đầu tiên</span>
+                          <span>+ Lập biên bản giao nhận</span>
                         </button>
                       )}
                     </div>
-                  ) : filteredDamageProtocols.length > 0 ? (
-                    <div className="animate-fade-in">
-                      <DamageProtocolList
-                        protocols={filteredDamageProtocols}
-                        onDeleteProtocol={handleDeleteAndSync}
-                        activeProtocolId={activeFormMode === 'VIEW_PROTOCOL' ? viewedProtocol?.protocolId : undefined}
-                        onPrintSelect={(protocol) => {
-                          setCurrentInspection(protocol);
-                          setActiveFormMode('GIAO_NHAN');
-                        }}
-                        onViewSelect={(protocol) => {
-                          setCurrentInspection(protocol);
-                          setActiveFormMode('GIAO_NHAN');
-                        }}
-                        currentUserRole={currentUserRole}
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center p-10 bg-stone-50 rounded-xl border border-dashed border-stone-300">
-                      <h3 className="text-sm font-bold text-stone-700 mb-1">Không tìm thấy kết quả</h3>
-                      <p className="text-xs text-stone-500">Đã tìm kiếm với "{searchQuery}"</p>
-                    </div>
-                  )
-                )}
+                  );
+                })()}
 
                 {protocolListTab === 'KIEM_CHON' && (
-                  allVehicleInspectionForms && allVehicleInspectionForms.length === 0 ? (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center p-10 bg-stone-50 rounded-xl border border-dashed border-stone-300">
-                      <div className="h-16 w-16 bg-stone-100 rounded-full flex items-center justify-center mb-4 text-stone-400">
-                        <FileText className="h-8 w-8" />
-                      </div>
-                      <h3 className="text-sm font-bold text-stone-700 mb-2">Chưa có biên bản kiểm chọn nào</h3>
-                      <p className="text-xs text-stone-500 max-w-sm mb-6">Chưa có biên bản kiểm chọn chi tiết nào được lập.</p>
-                    </div>
-                  ) : filteredVehicleInspectionForms.length > 0 ? (
+                  filteredVehicleInspectionForms.length > 0 ? (
                     <div className="animate-fade-in space-y-3.5">
                       {filteredVehicleInspectionForms.map((form, index) => {
                         const vehicleInfo = savedVehicles.find(v => v.vehicleId === form.vehicleId);
@@ -553,7 +1047,7 @@ export function InspectionTab({
                           onClick={() => {
                             const formId = form.id || form.docId || form.protocolId || form.vehicleId;
                             setActiveDetailedFormId(formId);
-                            setActiveDetailedVehicle({ vehicleId: form.vehicleId, plateNumber: displayPlateNumber, brand: form.vehicleName || 'Hyundai County' } as any);
+                            setActiveDetailedVehicle({ vehicleId: form.vehicleId, plateNumber: displayPlateNumber, brand: form.vehicleName || '' } as any);
                             setActiveFormMode('KIEM_CHON');
                           }}
                         >
@@ -577,9 +1071,6 @@ export function InspectionTab({
                           </div>
                           
                           <div className="flex items-center gap-6 text-xs text-stone-500 font-medium">
-                            <div className="flex items-center gap-1.5 hidden sm:flex">
-                              Lưu lúc: {formatVNTime(form.updatedAt) || "Không rõ"}
-                            </div>
                             <div className="flex items-center gap-1.5">
                               Người lập: <span className="font-bold text-stone-700">{form.createdByName || 'Người dùng'}</span>
                             </div>
@@ -619,8 +1110,42 @@ export function InspectionTab({
                     </div>
                   ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-center p-10 bg-stone-50 rounded-xl border border-dashed border-stone-300">
-                      <h3 className="text-sm font-bold text-stone-700 mb-1">Không tìm thấy kết quả</h3>
-                      <p className="text-xs text-stone-500">Đã tìm kiếm với "{searchQuery}"</p>
+                      <div className="h-16 w-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-4">
+                        <FileText className="h-8 w-8" />
+                      </div>
+
+                      {searchQuery ? (
+                        <>
+                          <h3 className="text-sm font-bold text-stone-800 mb-1">Không tìm thấy kết quả phù hợp</h3>
+                          <p className="text-xs text-stone-500 mb-6">Đã tìm kiếm với từ khóa "{searchQuery}".</p>
+                        </>
+                      ) : selectedSession ? (
+                        <>
+                          <h3 className="text-sm font-bold text-stone-800 mb-1">
+                            Chưa có biên bản kiểm chọn cho {selectedSession.plateNumber || 'xe này'} (Lần {selectedSession.repairNumber || 1})
+                          </h3>
+                          <p className="text-xs text-stone-500 max-w-md mb-6">
+                            Chưa có biên bản kiểm chọn chi tiết nào được lập cho đợt sửa chữa này.
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <h3 className="text-sm font-bold text-stone-800 mb-1">Chưa có biên bản kiểm chọn nào</h3>
+                          <p className="text-xs text-stone-500 max-w-md mb-6">
+                            Chưa có biên bản kiểm chọn chi tiết nào trong hệ thống.
+                          </p>
+                        </>
+                      )}
+
+                      {canEdit && (
+                        <button
+                          onClick={() => createNewSelection()}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-2 cursor-pointer shadow-sm shadow-blue-600/20"
+                        >
+                          <PlusCircle className="h-4 w-4" />
+                          <span>+ Lập biên bản kiểm chọn</span>
+                        </button>
+                      )}
                     </div>
                   )
                 )}

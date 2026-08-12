@@ -20,11 +20,12 @@ import {
   Lock,
   X,
   Trash2,
-  FolderOpen
+  FolderOpen,
+  Search
 } from 'lucide-react';
-import { isFirebaseConfigured, db } from './firebase';
+import { isFirebaseConfigured, db, DataService } from './firebase';
 import { dbService } from './services/dbService';
-import { Vehicle, RepairHistory, DamageProtocol, User } from './types';
+import { Vehicle, RepairHistory, DamageProtocol, User, RepairSession } from './types';
 import { VehicleProfileCard } from './components/VehicleProfileCard';
 import { HistoryTimeline } from './components/HistoryTimeline';
 import { ReceiveForm } from './components/ReceiveForm';
@@ -42,6 +43,8 @@ import { canViewModule } from './services/permissionService';
 import { InspectionTab } from './components/InspectionTab';
 import { RepairRecordsTab } from './components/RepairRecordsTab';
 import { OperationsTab } from './components/OperationsTab';
+import { PostRepairRecordsTab } from './components/PostRepairRecordsTab';
+import { QuickLookupTab } from './components/QuickLookupTab';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(() => userService.getCurrentUser());
@@ -57,15 +60,28 @@ export default function App() {
       return null;
     }
   });
+  const [selectedRepairSession, setSelectedRepairSession] = useState<RepairSession | null>(() => {
+    try {
+      const stored = localStorage.getItem('saved_selected_repair_session');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
   const [repairHistory, setRepairHistory] = useState<RepairHistory[]>([]);
   const [damageProtocols, setDamageProtocols] = useState<DamageProtocol[]>([]);
   const [activeDamageProtocol, setActiveDamageProtocol] = useState<DamageProtocol | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [showSavedList, setShowSavedList] = useState(false);
   const [savedVehicles, setSavedVehicles] = useState<Vehicle[]>([]);
-  const [workspaceTab, setWorkspaceTab] = useState<'INTRO' | 'RECEPTION' | 'INSPECTION' | 'REPAIR_RECORDS' | 'OPERATIONS'>(() => {
+  const [workspaceTab, setWorkspaceTab] = useState<'INTRO' | 'RECEPTION' | 'INSPECTION' | 'REPAIR_RECORDS' | 'POST_REPAIR_RECORDS' | 'OPERATIONS' | 'QUICK_LOOKUP'>(() => {
     return (localStorage.getItem('saved_workspaceTab') as any) || 'INTRO';
   });
+  const [pendingOpenRequest, setPendingOpenRequest] = useState<{
+    module: 'INSPECTION' | 'REPAIR_RECORDS' | 'POST_REPAIR_RECORDS';
+    formType?: 'DAMAGE_PROTOCOL' | 'REPAIR_HISTORY' | 'POST_REPAIR_INSPECTION' | 'POST_REPAIR_HANDOVER';
+    recordId: string;
+  } | null>(null);
   const [allDamageProtocols, setAllDamageProtocols] = useState<DamageProtocol[]>([]);
   const [allVehicleInspectionForms, setAllVehicleInspectionForms] = useState<any[]>([]);
 
@@ -184,6 +200,14 @@ export default function App() {
   }, [showDetailedInspectionForm]);
 
   useEffect(() => {
+    if (selectedRepairSession) {
+      localStorage.setItem('saved_selected_repair_session', JSON.stringify(selectedRepairSession));
+    } else {
+      localStorage.removeItem('saved_selected_repair_session');
+    }
+  }, [selectedRepairSession]);
+
+  useEffect(() => {
     if (selectedVehicle) {
       console.log(
         "SAVE VEHICLE = " +
@@ -212,6 +236,24 @@ export default function App() {
       await loadAllSavedVehicles();
       await loadAllDamageProtocols();
       
+      const storedSession = localStorage.getItem('saved_selected_repair_session');
+      if (storedSession) {
+        try {
+          const parsedSession = JSON.parse(storedSession);
+          if (parsedSession && parsedSession.id) {
+            const sessions = await dbService.getAllRepairSessions();
+            const freshSession = sessions.find(s => s.id === parsedSession.id && !s.isDeleted);
+            if (freshSession) {
+              setSelectedRepairSession(freshSession);
+            } else {
+              setSelectedRepairSession(parsedSession);
+            }
+          }
+        } catch (e) {
+          console.error("Failed to restore selected repair session on mount:", e);
+        }
+      }
+
       const stored = localStorage.getItem('saved_selected_vehicle');
       console.log(
         "STORAGE CHECK = " +
@@ -241,6 +283,7 @@ export default function App() {
     setIsSearching(true);
     setNotFoundPlate(null);
     setSelectedVehicle(null);
+    setSelectedRepairSession(null);
     setRepairHistory([]);
     setDamageProtocols([]);
     setViewMode('BROWSE');
@@ -262,6 +305,17 @@ export default function App() {
         setLastSearchedPlate(result.vehicle.plateNumber);
         const dps = await dbService.getDamageProtocols(result.vehicle.vehicleId);
         setDamageProtocols(dps);
+
+        // Fetch repair sessions for this vehicle and set active open session
+        const sessions = await dbService.getAllRepairSessions();
+        const vSessions = sessions.filter(s => (s.vehicleId === result.vehicle.vehicleId || s.plateNumber === result.vehicle.plateNumber) && !s.isDeleted);
+        const openSession = vSessions.find(s => s.status !== 'CLOSED' && s.workflowState !== 'HANDED_OVER' && !s.closedAt);
+        if (openSession) {
+          setSelectedRepairSession(openSession);
+        } else if (vSessions.length > 0) {
+          vSessions.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+          setSelectedRepairSession(vSessions[0]);
+        }
       } else {
         setNotFoundPlate(plate);
         setLastSearchedPlate(plate);
@@ -289,6 +343,7 @@ export default function App() {
 
   const handleReset = () => {
     setSelectedVehicle(null);
+    setSelectedRepairSession(null);
     setRepairHistory([]);
     setDamageProtocols([]);
     setActiveDamageProtocol(null);
@@ -297,6 +352,7 @@ export default function App() {
     setViewMode('BROWSE');
     setActiveTab('REPAIR_HISTORY');
     localStorage.removeItem('saved_selected_vehicle');
+    localStorage.removeItem('saved_selected_repair_session');
   };
 
   const handleDeleteHistory = async (historyId: string) => {
@@ -309,7 +365,9 @@ export default function App() {
     await loadAllSavedVehicles();
     if (selectedVehicle && (selectedVehicle.vehicleId === vehicleId || selectedVehicle.plateNumber === vehicleId)) {
       setSelectedVehicle(null);
+      setSelectedRepairSession(null);
       localStorage.removeItem('saved_selected_vehicle');
+      localStorage.removeItem('saved_selected_repair_session');
     }
   };
 
@@ -352,15 +410,97 @@ export default function App() {
     setViewMode('VIEW_PRINT_DAMAGE_PROTOCOL');
   };
 
+  const handleOpenRecord = (request: {
+    module: 'INSPECTION' | 'REPAIR_RECORDS' | 'POST_REPAIR_RECORDS';
+    formType?: 'DAMAGE_PROTOCOL' | 'REPAIR_HISTORY' | 'POST_REPAIR_INSPECTION' | 'POST_REPAIR_HANDOVER';
+    recordId: string;
+  }) => {
+    console.log("Unified open record request in App.tsx:", request);
+    setPendingOpenRequest(request);
+    
+    // Attempt to set selectedVehicle to load properly if formType is DAMAGE_PROTOCOL
+    if (request.formType === 'DAMAGE_PROTOCOL') {
+      const matched = allDamageProtocols.find(p => p.protocolId === request.recordId || p.id === request.recordId);
+      if (matched) {
+        const vPlate = matched.plateNumber;
+        const vId = matched.vehicleId;
+        const matchedVehicle = savedVehicles.find(v => v.plateNumber === vPlate || v.vehicleId === vId);
+        if (matchedVehicle) {
+          setSelectedVehicle(matchedVehicle);
+        } else if (vPlate) {
+          setSelectedVehicle({
+            vehicleId: vId || 'TEMP-' + Date.now(),
+            plateNumber: vPlate,
+            brand: matched.brand || 'Hyundai County',
+            vehicleType: matched.vehicleType || 'Xe quân sự',
+            vehicleGroup: '',
+            chassisNumber: matched.chassisNumber || '',
+            engineNumber: matched.engineNumber || '',
+            yearOfManufacture: '',
+            countryOfOrigin: ''
+          } as any);
+        }
+      }
+    } else if (request.formType === 'REPAIR_HISTORY') {
+      const loadVehicleForRepairHistory = async () => {
+        try {
+          const stored = await DataService.load('postRepairRecords') || [];
+          const matched = stored.find((p: any) => p.repairRecordId === request.recordId);
+          if (matched) {
+            const vPlate = matched.plateNumber;
+            const vId = matched.vehicleId;
+            const matchedVehicle = savedVehicles.find(v => v.plateNumber === vPlate || v.vehicleId === vId);
+            if (matchedVehicle) {
+              setSelectedVehicle(matchedVehicle);
+            }
+          } else {
+            const storedHistory = await DataService.load('repairHistory') || [];
+            const matchedHistory = storedHistory.find((h: any) => h.historyId === request.recordId || h.id === request.recordId);
+            if (matchedHistory) {
+              const matchedVehicle = savedVehicles.find(v => v.vehicleId === matchedHistory.vehicleId);
+              if (matchedVehicle) {
+                setSelectedVehicle(matchedVehicle);
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("Failed to auto-select vehicle for repair history:", e);
+        }
+      };
+      loadVehicleForRepairHistory();
+    } else if (request.formType === 'POST_REPAIR_INSPECTION' || request.formType === 'POST_REPAIR_HANDOVER') {
+      const loadVehicleForPostRepair = async () => {
+        try {
+          const stored = await DataService.load('postRepairRecords') || [];
+          const matched = stored.find((p: any) => p.repairRecordId === request.recordId && p.templateType === request.formType);
+          if (matched) {
+            const vPlate = matched.plateNumber;
+            const vId = matched.vehicleId;
+            const matchedVehicle = savedVehicles.find(v => v.plateNumber === vPlate || v.vehicleId === vId);
+            if (matchedVehicle) {
+              setSelectedVehicle(matchedVehicle);
+            }
+          }
+        } catch (e) {
+          console.warn("Failed to auto-select vehicle for post repair records:", e);
+        }
+      };
+      loadVehicleForPostRepair();
+    }
+    
+    // Transition the workspace tab based on the requested module
+    setWorkspaceTab(request.module);
+  };
+
   if (!currentUser) {
     return <LoginScreen onLoginSuccess={(u) => setCurrentUser(u)} />;
   }
 
   return (
-    <div className="min-h-screen bg-stone-100 text-stone-850 font-sans selection:bg-emerald-800 selection:text-white pb-12 overflow-x-hidden">
+    <div className="min-h-screen bg-stone-100 text-stone-850 font-sans selection:bg-emerald-800 selection:text-white pb-12 overflow-x-hidden print:bg-white">
       
       {/* 1. Header Banner & Branding */}
-      <header className="bg-emerald-950 border-b border-emerald-900 shadow-md">
+      <header className="bg-emerald-950 border-b border-emerald-900 shadow-md print:hidden">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex flex-col lg:flex-row items-center justify-between gap-5">
           
           {/* Logo & Military Depot Title */}
@@ -373,7 +513,7 @@ export default function App() {
                 <span>TIỂU ĐOÀN SCTH30 - CỤC HẬU CẦN-KỸ THUẬT QUÂN ĐOÀN 34</span>
               </div>
               <h1 className="text-xl md:text-2xl font-bold font-sans tracking-tight text-white mt-0.5">
-                Hệ thống tiếp nhận và sửa chữa xe sửa chữa
+                Hệ thống tiếp nhận và quản lý xe sửa chữa
               </h1>
             </div>
           </div>
@@ -419,8 +559,7 @@ export default function App() {
                   <span className="text-[10px] text-emerald-200/70 font-mono font-medium">@{currentUser.username}</span>
                 </div>
                 <div className="text-[10px] text-stone-300 font-semibold leading-none">
-                  {currentUser.role === 'dai_doi_truong' ? 'Đại đội trưởng' :
-                   currentUser.role === 'pho_dai_doi_truong' ? 'Phó Đại đội trưởng' :
+                  {currentUser.role === 'pho_dai_doi_truong' ? 'Phó Đại đội trưởng' :
                    currentUser.role === 'trung_doi_truong' ? 'Trung đội trưởng' :
                    currentUser.role === 'to_truong' ? 'Tổ trưởng' :
                    currentUser.role === 'kcs' ? 'Nhân viên KCS' :
@@ -486,17 +625,17 @@ export default function App() {
         {/* Main Content Areas */}
 
         {/* Beautiful Workspace Tabs Navigation */}
-        <div className="flex border-b border-stone-200 mt-6 mb-6 bg-white rounded-xl shadow-sm p-1 flex-row gap-0.5 md:gap-1 font-sans w-full max-w-full overflow-hidden">
+        <div className="flex items-center gap-1.5 md:gap-2 p-1.5 bg-white rounded-2xl shadow-sm border border-stone-200 mt-4 mb-3 font-sans w-full max-w-full overflow-x-auto scroll-smooth print:hidden">
           <button
             onClick={() => setWorkspaceTab('INTRO')}
-            className={`flex-1 min-w-0 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2.5 py-1.5 md:py-3 px-0.5 md:px-4 text-[9px] w-[50px] sm:w-auto sm:text-[11px] md:text-sm leading-[1.2] whitespace-normal text-center font-bold rounded-lg transition-all cursor-pointer break-words ${
+            className={`shrink-0 lg:flex-1 flex items-center justify-center gap-1.5 md:gap-2 px-3 md:px-3.5 py-2.5 md:py-3 text-xs md:text-sm font-extrabold text-center rounded-xl transition-all cursor-pointer whitespace-nowrap ${
               workspaceTab === 'INTRO'
-                ? 'bg-emerald-800 text-white shadow-md'
-                : 'text-stone-600 hover:text-emerald-900 hover:bg-stone-50/50'
+                ? 'bg-emerald-800 text-white shadow-md ring-2 ring-emerald-600/30'
+                : 'text-stone-700 bg-stone-50 hover:bg-stone-100 hover:text-emerald-900 border border-stone-200/60'
             }`}
           >
-            <BookOpen className="h-4 w-4" />
-            <span>Giới thiệu</span>
+            <BookOpen className={`h-4 w-4 shrink-0 ${workspaceTab === 'INTRO' ? 'text-yellow-400' : 'text-stone-500'}`} />
+            <span className="whitespace-nowrap">Giới thiệu</span>
           </button>
           {canViewModule(currentUser.role, 'RECEPTION') && (
             <button
@@ -504,14 +643,14 @@ export default function App() {
                 setWorkspaceTab('RECEPTION');
                 await loadAllSavedVehicles();
               }}
-              className={`flex-1 min-w-0 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2.5 py-1.5 md:py-3 px-0.5 md:px-4 text-[9px] w-[50px] sm:w-auto sm:text-[11px] md:text-sm leading-[1.2] whitespace-normal text-center font-bold rounded-lg transition-all cursor-pointer break-words ${
+              className={`shrink-0 lg:flex-1 flex items-center justify-center gap-1.5 md:gap-2 px-3 md:px-3.5 py-2.5 md:py-3 text-xs md:text-sm font-extrabold text-center rounded-xl transition-all cursor-pointer whitespace-nowrap ${
                 workspaceTab === 'RECEPTION'
-                  ? 'bg-emerald-800 text-white shadow-md'
-                  : 'text-stone-600 hover:text-emerald-950 hover:bg-stone-50/50'
+                  ? 'bg-emerald-800 text-white shadow-md ring-2 ring-emerald-600/30'
+                  : 'text-stone-700 bg-stone-50 hover:bg-stone-100 hover:text-emerald-900 border border-stone-200/60'
               }`}
             >
-              <Truck className="h-4 w-4" />
-              <span>Tiếp nhận</span>
+              <Truck className={`h-4 w-4 shrink-0 ${workspaceTab === 'RECEPTION' ? 'text-yellow-400' : 'text-stone-500'}`} />
+              <span className="whitespace-nowrap">Tiếp nhận</span>
             </button>
           )}
           {canViewModule(currentUser.role, 'INSPECTION') && (
@@ -520,44 +659,106 @@ export default function App() {
                 setWorkspaceTab('INSPECTION');
                 await loadAllDamageProtocols();
               }}
-              className={`flex-1 min-w-0 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2.5 py-1.5 md:py-3 px-0.5 md:px-4 text-[9px] w-[50px] sm:w-auto sm:text-[11px] md:text-sm leading-[1.2] whitespace-normal text-center font-bold rounded-lg transition-all cursor-pointer break-words ${
+              className={`shrink-0 lg:flex-1 flex items-center justify-center gap-1.5 md:gap-2 px-3 md:px-3.5 py-2.5 md:py-3 text-xs md:text-sm font-extrabold text-center rounded-xl transition-all cursor-pointer whitespace-nowrap ${
                 workspaceTab === 'INSPECTION'
-                  ? 'bg-emerald-800 text-white shadow-md'
-                  : 'text-stone-600 hover:text-emerald-950 hover:bg-stone-50/50'
+                  ? 'bg-emerald-800 text-white shadow-md ring-2 ring-emerald-600/30'
+                  : 'text-stone-700 bg-stone-50 hover:bg-stone-100 hover:text-emerald-900 border border-stone-200/60'
               }`}
             >
-              <Wrench className="h-4 w-4" />
-              <span>Hồ sơ kiểm tra đầu vào</span>
+              <Wrench className={`h-4 w-4 shrink-0 ${workspaceTab === 'INSPECTION' ? 'text-yellow-400' : 'text-stone-500'}`} />
+              <span className="whitespace-nowrap">Hồ sơ kiểm tra đầu vào</span>
             </button>
           )}
-          <button
-            onClick={async () => {
-              setWorkspaceTab('REPAIR_RECORDS');
-            }}
-            className={`flex-1 min-w-0 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2.5 py-1.5 md:py-3 px-0.5 md:px-4 text-[9px] w-[50px] sm:w-auto sm:text-[11px] md:text-sm leading-[1.2] whitespace-normal text-center font-bold rounded-lg transition-all cursor-pointer break-words ${
-              workspaceTab === 'REPAIR_RECORDS'
-                ? 'bg-emerald-800 text-white shadow-md'
-                : 'text-stone-600 hover:text-emerald-950 hover:bg-stone-50/50'
-            }`}
-          >
-            <ClipboardList className="h-4 w-4" />
-            <span>Hồ sơ sửa chữa</span>
-          </button>
+          {canViewModule(currentUser.role, 'REPAIR') && (
+            <button
+              onClick={async () => {
+                setWorkspaceTab('REPAIR_RECORDS');
+              }}
+              className={`shrink-0 lg:flex-1 flex items-center justify-center gap-1.5 md:gap-2 px-3 md:px-3.5 py-2.5 md:py-3 text-xs md:text-sm font-extrabold text-center rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+                workspaceTab === 'REPAIR_RECORDS'
+                  ? 'bg-emerald-800 text-white shadow-md ring-2 ring-emerald-600/30'
+                  : 'text-stone-700 bg-stone-50 hover:bg-stone-100 hover:text-emerald-900 border border-stone-200/60'
+              }`}
+            >
+              <ClipboardList className={`h-4 w-4 shrink-0 ${workspaceTab === 'REPAIR_RECORDS' ? 'text-yellow-400' : 'text-stone-500'}`} />
+              <span className="whitespace-nowrap">Hồ sơ sửa chữa</span>
+            </button>
+          )}
+          {canViewModule(currentUser.role, 'POST_REPAIR') && (
+            <button
+              onClick={async () => {
+                setWorkspaceTab('POST_REPAIR_RECORDS');
+              }}
+              className={`shrink-0 lg:flex-1 flex items-center justify-center gap-1.5 md:gap-2 px-3 md:px-3.5 py-2.5 md:py-3 text-xs md:text-sm font-extrabold text-center rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+                workspaceTab === 'POST_REPAIR_RECORDS'
+                  ? 'bg-emerald-800 text-white shadow-md ring-2 ring-emerald-600/30'
+                  : 'text-stone-700 bg-stone-50 hover:bg-stone-100 hover:text-emerald-900 border border-stone-200/60'
+              }`}
+            >
+              <FileText className={`h-4 w-4 shrink-0 ${workspaceTab === 'POST_REPAIR_RECORDS' ? 'text-yellow-400' : 'text-stone-500'}`} />
+              <span className="whitespace-nowrap">Hồ sơ sau sửa chữa</span>
+            </button>
+          )}
           {canViewModule(currentUser.role, 'OPERATIONS') && (
             <button
               onClick={async () => {
                 setWorkspaceTab('OPERATIONS');
               }}
-              className={`flex-1 min-w-0 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2.5 py-1.5 md:py-3 px-0.5 md:px-4 text-[9px] w-[50px] sm:w-auto sm:text-[11px] md:text-sm leading-[1.2] whitespace-normal text-center font-bold rounded-lg transition-all cursor-pointer break-words ${
+              className={`shrink-0 lg:flex-1 flex items-center justify-center gap-1.5 md:gap-2 px-3 md:px-3.5 py-2.5 md:py-3 text-xs md:text-sm font-extrabold text-center rounded-xl transition-all cursor-pointer whitespace-nowrap ${
                 workspaceTab === 'OPERATIONS'
-                  ? 'bg-emerald-800 text-white shadow-md'
-                  : 'text-stone-600 hover:text-emerald-950 hover:bg-stone-50/50'
+                  ? 'bg-emerald-800 text-white shadow-md ring-2 ring-emerald-600/30'
+                  : 'text-stone-700 bg-stone-50 hover:bg-stone-100 hover:text-emerald-900 border border-stone-200/60'
               }`}
             >
-              <FolderOpen className="h-4 w-4" />
-              <span>Điều hành công việc</span>
+              <FolderOpen className={`h-4 w-4 shrink-0 ${workspaceTab === 'OPERATIONS' ? 'text-yellow-400' : 'text-stone-500'}`} />
+              <span className="whitespace-nowrap">Điều hành công việc</span>
             </button>
           )}
+          {canViewModule(currentUser.role, 'QUICK_LOOKUP') && (
+            <button
+              onClick={() => {
+                setWorkspaceTab('QUICK_LOOKUP');
+              }}
+              className={`shrink-0 lg:flex-1 flex items-center justify-center gap-1.5 md:gap-2 px-3 md:px-3.5 py-2.5 md:py-3 text-xs md:text-sm font-extrabold text-center rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+                workspaceTab === 'QUICK_LOOKUP'
+                  ? 'bg-emerald-800 text-white shadow-md ring-2 ring-emerald-600/30'
+                  : 'text-stone-700 bg-stone-50 hover:bg-stone-100 hover:text-emerald-900 border border-stone-200/60'
+              }`}
+            >
+              <Search className={`h-4 w-4 shrink-0 ${workspaceTab === 'QUICK_LOOKUP' ? 'text-yellow-400' : 'text-stone-500'}`} />
+              <span className="whitespace-nowrap">Tra cứu nhanh</span>
+            </button>
+          )}
+        </div>
+
+        {/* Mobile Active Module Header Banner */}
+        <div className="md:hidden mb-5 p-3.5 bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-950 text-white rounded-2xl shadow-md border border-emerald-800/80 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-yellow-500/20 border border-yellow-500/40 rounded-xl text-yellow-400 shrink-0 shadow-inner">
+              {workspaceTab === 'INTRO' && <BookOpen className="h-5 w-5" />}
+              {workspaceTab === 'RECEPTION' && <Truck className="h-5 w-5" />}
+              {workspaceTab === 'INSPECTION' && <Wrench className="h-5 w-5" />}
+              {workspaceTab === 'REPAIR_RECORDS' && <ClipboardList className="h-5 w-5" />}
+              {workspaceTab === 'POST_REPAIR_RECORDS' && <FileText className="h-5 w-5" />}
+              {workspaceTab === 'OPERATIONS' && <FolderOpen className="h-5 w-5" />}
+              {workspaceTab === 'QUICK_LOOKUP' && <Search className="h-5 w-5" />}
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase font-extrabold text-yellow-400 tracking-wider">MODULE HIỆN TẠI</div>
+              <div className="text-sm font-black text-white leading-tight">
+                {workspaceTab === 'INTRO' && 'Giới thiệu hệ thống'}
+                {workspaceTab === 'RECEPTION' && 'Tiếp nhận xe sửa chữa'}
+                {workspaceTab === 'INSPECTION' && 'Hồ sơ kiểm tra đầu vào'}
+                {workspaceTab === 'REPAIR_RECORDS' && 'Hồ sơ sửa chữa'}
+                {workspaceTab === 'POST_REPAIR_RECORDS' && 'Hồ sơ sau sửa chữa'}
+                {workspaceTab === 'OPERATIONS' && 'Điều hành công việc'}
+                {workspaceTab === 'QUICK_LOOKUP' && 'Tra cứu nhanh'}
+              </div>
+            </div>
+          </div>
+          <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-800 text-emerald-100 border border-emerald-700 shrink-0 shadow-xs">
+            {['INTRO', 'RECEPTION', 'INSPECTION', 'REPAIR_RECORDS', 'POST_REPAIR_RECORDS', 'OPERATIONS', 'QUICK_LOOKUP'].indexOf(workspaceTab) + 1}/7
+          </span>
         </div>
 
         {/* Global USER_MANAGEMENT view has override priority */}
@@ -616,6 +817,8 @@ export default function App() {
                     setViewMode={setViewMode}
                     selectedVehicle={selectedVehicle}
                     setSelectedVehicle={setSelectedVehicle}
+                    selectedRepairSession={selectedRepairSession}
+                    onSelectRepairSession={setSelectedRepairSession}
                     savedVehicles={savedVehicles}
                     repairHistory={repairHistory}
                     notFoundPlate={notFoundPlate}
@@ -635,6 +838,9 @@ export default function App() {
                     viewMode={viewMode}
                     setViewMode={setViewMode}
                     selectedVehicle={selectedVehicle}
+                    setSelectedVehicle={setSelectedVehicle}
+                    selectedRepairSession={selectedRepairSession}
+                    onSelectRepairSession={setSelectedRepairSession}
                     savedVehicles={savedVehicles}
                     showDetailedInspectionForm={showDetailedInspectionForm}
                     setShowDetailedInspectionForm={setShowDetailedInspectionForm}
@@ -648,22 +854,52 @@ export default function App() {
                     handleDeleteVehicleInspectionForm={handleDeleteVehicleInspectionForm}
                     handlePrintDamageProtocol={handlePrintDamageProtocol}
                     currentUserRole={currentUser?.role}
+                    pendingOpenRequest={pendingOpenRequest}
+                    onClearPendingOpenRequest={() => setPendingOpenRequest(null)}
                   />
                 )}
 
                 {/* Tab 4: "Hồ sơ sửa chữa" */}
-                {workspaceTab === 'REPAIR_RECORDS' && (
+                {workspaceTab === 'REPAIR_RECORDS' && canViewModule(currentUser.role, 'REPAIR') && (
                   <RepairRecordsTab 
                     viewMode={viewMode}
                     setViewMode={setViewMode}
                     selectedVehicle={selectedVehicle}
+                    selectedRepairSession={selectedRepairSession}
+                    onSelectRepairSession={setSelectedRepairSession}
                     savedVehicles={savedVehicles}
+                    pendingOpenRequest={pendingOpenRequest}
+                    onClearPendingOpenRequest={() => setPendingOpenRequest(null)}
+                  />
+                )}
+
+                {/* Tab 4.5: "Hồ sơ sau sửa chữa" */}
+                {workspaceTab === 'POST_REPAIR_RECORDS' && canViewModule(currentUser.role, 'POST_REPAIR') && (
+                  <PostRepairRecordsTab 
+                    viewMode={viewMode}
+                    setViewMode={setViewMode}
+                    selectedVehicle={selectedVehicle}
+                    selectedRepairSession={selectedRepairSession}
+                    onSelectRepairSession={setSelectedRepairSession}
+                    savedVehicles={savedVehicles}
+                    currentUserRole={currentUser?.role}
+                    pendingOpenRequest={pendingOpenRequest}
+                    onClearPendingOpenRequest={() => setPendingOpenRequest(null)}
                   />
                 )}
 
                 {/* Tab 5: "Điều hành công việc" */}
                 {workspaceTab === 'OPERATIONS' && canViewModule(currentUser.role, 'OPERATIONS') && (
                   <OperationsTab />
+                )}
+
+                {/* Tab 6: "Tra cứu nhanh" */}
+                {workspaceTab === 'QUICK_LOOKUP' && canViewModule(currentUser.role, 'QUICK_LOOKUP') && (
+                  <QuickLookupTab 
+                    onOpenRecord={handleOpenRecord}
+                    selectedRepairSession={selectedRepairSession}
+                    onSelectRepairSession={setSelectedRepairSession}
+                  />
                 )}
               </>
             )}
@@ -672,7 +908,7 @@ export default function App() {
       </main>
       
       {/* Footer credits */}
-      <footer className="mt-12 text-center text-xs text-stone-400 font-sans pb-6">
+      <footer className="mt-12 text-center text-xs text-stone-400 font-sans pb-6 print:hidden">
         <p>© 2026 TIỂU ĐOÀN SCTH30 - CỤC HẬU CẦN-KỸ THUẬT QUÂN ĐOÀN 34</p>
       </footer>
 

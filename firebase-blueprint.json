@@ -112,6 +112,24 @@
         "createdBy": { "type": "string", "description": "Creator identifier" }
       },
       "required": ["uid", "username", "fullName", "rank", "unit", "role", "isActive", "createdAt", "createdBy"]
+    },
+    "PostRepairRecord": {
+      "title": "Post Repair Record",
+      "description": "Represents technical/handover records and inspection forms completed after vehicle repairs",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique record identifier" },
+        "templateType": { "type": "string", "description": "Type of the post-repair form template" },
+        "vehicleId": { "type": "string", "description": "License plate or reference vehicle identifier" },
+        "repairRecordId": { "type": "string", "description": "ID linking to the corresponding repair record/session" },
+        "createdBy": { "type": "string", "description": "User identifier of the creator" },
+        "createdByName": { "type": "string", "description": "Full name of the creator" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "isDeleted": { "type": "boolean", "description": "Soft delete status flag" },
+        "formData": { "type": "object", "description": "Flexible key-value payload containing form specific data, keeping root free of business-specific fields" }
+      },
+      "required": ["id", "templateType", "vehicleId", "createdBy", "createdByName", "isDeleted", "formData"]
     }
   },
   "firestore": {
@@ -134,6 +152,10 @@
     "vehicleInspectionForms/{vehicleId}": {
       "schema": "VehicleInspectionForm",
       "description": "Military administrative detailed damage inspection form saved per vehicle"
+    },
+    "postRepairRecords/{recordId}": {
+      "schema": "PostRepairRecord",
+      "description": "Collection of technical/handover records and forms completed after repairs"
     }
   }
 }

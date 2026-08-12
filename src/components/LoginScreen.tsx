@@ -126,8 +126,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                   </div>
                   <input
                     type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    value={typeof (username) === 'string' ? (username).normalize('NFC') : (username)}
+                    onChange={(e) => setUsername(e.target.value.normalize('NFC'))}
                     disabled={isLoading}
                     placeholder="Nhập tài khoản"
                     className="block w-full pl-12 pr-4 py-4 md:py-4.5 bg-white border border-stone-200 rounded-2xl text-stone-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 transition-all font-semibold placeholder:text-stone-400 placeholder:font-medium shadow-sm hover:border-emerald-200"
@@ -145,8 +145,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                   </div>
                   <input
                     type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    value={typeof (password) === 'string' ? (password).normalize('NFC') : (password)}
+                    onChange={(e) => setPassword(e.target.value.normalize('NFC'))}
                     disabled={isLoading}
                     placeholder="••••••••"
                     className="block w-full pl-12 pr-4 py-4 md:py-4.5 bg-white border border-stone-200 rounded-2xl text-stone-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 transition-all font-semibold placeholder:text-stone-400 placeholder:font-medium shadow-sm hover:border-emerald-200"

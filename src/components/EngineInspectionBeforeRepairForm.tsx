@@ -1,3 +1,4 @@
+import { normalizeNFC } from '../utils/stringUtils';
 import { canEditDocument } from '../services/ownershipService';
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Save, FileDown, Printer, Plus } from 'lucide-react';
@@ -7,6 +8,7 @@ import { DataService } from '../firebase';
 import { AutoResizeTextarea } from './AutoResizeTextarea';
 
 interface Props {
+  targetSessionId?: string;
   vehicle?: Vehicle | null;
   existingFormId?: string;
   templateName?: string;
@@ -18,65 +20,83 @@ interface Props {
 }
 
 const DEFAULT_INSPECTION_ITEMS = [
-  { id: 1, content: 'Tình trạng chung bên ngoài động cơ', unit: '-', requirement: 'Không nứt vỡ, rò rỉ' },
-  { id: 2, content: 'Khả năng khởi động', unit: '-', requirement: 'Dễ nổ' },
-  { id: 3, content: 'Áp suất dầu bôi trơn (Không tải)', unit: 'kg/cm2', requirement: 'Theo tài liệu kỹ thuật' },
-  { id: 4, content: 'Áp suất dầu bôi trơn (Định mức)', unit: 'kg/cm2', requirement: 'Theo tài liệu kỹ thuật' },
-  { id: 5, content: 'Nhiệt độ nước làm mát định mức', unit: '°C', requirement: '80 - 90' },
-  { id: 6, content: 'Tiếng gõ, tiếng ồn bất thường', unit: '-', requirement: 'Không có' },
-  { id: 7, content: 'Tình trạng rò rỉ (dầu, nước, nhiên liệu)', unit: '-', requirement: 'Kín khít, không rò rỉ' },
-  { id: 8, content: 'Tình trạng khí xả (Màu sắc khói)', unit: '-', requirement: 'Bình thường, không khói đen/xanh' },
-  { id: 9, content: 'Tốc độ vòng quay không tải biên', unit: 'v/p', requirement: 'Ổn định, theo TLKT' },
-  { id: 10, content: 'Hệ thống cung cấp nhiên liệu', unit: '-', requirement: 'Hoạt động tốt, kín' },
-  { id: 11, content: 'Hệ thống điện động cơ (Máy nạp, máy đề)', unit: '-', requirement: 'Hoạt động tốt' },
-  { id: 12, content: 'Tình trạng các bộ phận phụ trợ (Bơm, đai)', unit: '-', requirement: 'Chắc chắn, căng đúng mức' },
+  { id: 1, content: "Áp suất buồng đốt cuối kỳ nén", unit: "kPa\n(kgf/cm2)", requirement: "≥700 (7,0)" },
+  { id: 2, content: "Chênh lệch áp suất giữa các buồng đốt", unit: "kPa\n(kgf/cm2)", requirement: "≤100 (1,0)" },
+  { id: 3, content: "Số vòng quay không tải nhỏ nhất", unit: "v/ph", requirement: "700÷750" },
+  { id: 4, content: "Số vòng quay lớn nhất", unit: "v/ph", requirement: "≥4000" },
+  { id: 5, content: "Áp suất dầu bôi trơn nhỏ nhất", unit: "(kgf/cm2)", requirement: "≥60 (0,6)" },
+  { id: 6, content: "Áp suất dầu bôi trơn lớn nhất", unit: "(kgf/cm2)", requirement: "Từ 450-500\n(4,5÷5,0)" },
+  { id: 7, content: "Độ võng của dây đai dẫn động máy phát và bơm nước khi ấn lực 40 N", unit: "mm", requirement: "8÷12" },
+  { id: 8, content: "Bơm xăng, bơm nước, bơm dầu", unit: "", requirement: "Đúng chủng loại, hoạt động ổn định, không có tiếng kêu lạ" },
+  { id: 9, content: "Két làm mát", unit: "", requirement: "Đúng chủng loại, không móp méo, dập các cánh tản nhiệt" },
+  { id: 10, content: "Hệ thống đường ống nước, dầu, cao su chân máy, chân két mát, dây đai các loại", unit: "", requirement: "Không nứt, vỡ, lão hóa" },
+  { id: 11, content: "Hệ thống phân phối khí", unit: "", requirement: "Đúng chủng lọa, hoạt động ổn định, tin cậy" },
+  { id: 12, content: "Tình trạng các doăng phớt, chảy dầu", unit: "", requirement: "Không bị chảy dầu" }
 ];
 
 const CHASSIS_INSPECTION_ITEMS = [
-  // I. HỆ THỐNG LÁI
-  { id: 101, category: 'I. HỆ THỐNG LÁI', content: 'Tình trạng vô lăng và khớp trục lái', unit: '-', requirement: 'Không rơ lỏng quá giới hạn' },
-  { id: 102, category: 'I. HỆ THỐNG LÁI', content: 'Cơ cấu lái (Hộp số lái)', unit: '-', requirement: 'Không rỉ dầu, bắt chặt' },
-  { id: 103, category: 'I. HỆ THỐNG LÁI', content: 'Các thanh đòn dầm lái, rôtuyn', unit: '-', requirement: 'Không biến dạng, không rơ' },
-  // II. HỆ THỐNG PHANH
-  { id: 201, category: 'II. HỆ THỐNG PHANH', content: 'Tổng phanh, bầu trợ lực phanh', unit: '-', requirement: 'Hoạt động êm, không rò rỉ' },
-  { id: 202, category: 'II. HỆ THỐNG PHANH', content: 'Các đường ống dẫn dầu/khí nén phanh', unit: '-', requirement: 'Kín khít, không rạn nứt' },
-  { id: 203, category: 'II. HỆ THỐNG PHANH', content: 'Cơ cấu phanh (Má phanh, trống/đĩa phanh)', unit: '-', requirement: 'Độ mòn trong giới hạn' },
-  { id: 204, category: 'II. HỆ THỐNG PHANH', content: 'Hiệu quả phanh chân và phanh tay', unit: '-', requirement: 'Hoạt động tốt, ăn đều' },
-  // III. HỆ THỐNG TREO
-  { id: 301, category: 'III. HỆ THỐNG TREO', content: 'Bộ nhíp lá (hoặc lò xo cuộn)', unit: '-', requirement: 'Không nứt gãy, không xô lệch' },
-  { id: 302, category: 'III. HỆ THỐNG TREO', content: 'Giảm chấn thủy lực (Thụt)', unit: '-', requirement: 'Không rỉ dầu, hoạt động êm' },
-  { id: 303, category: 'III. HỆ THỐNG TREO', content: 'Thanh cân bằng, cao su đệm', unit: '-', requirement: 'Đầy đủ, bắt chắc chắn' },
-  // IV. HỘP SỐ
-  { id: 401, category: 'IV. HỘP SỐ', content: 'Tình trạng vỏ hộp số chính, hộp số phụ', unit: '-', requirement: 'Không nứt vỡ, không rò rỉ' },
-  { id: 402, category: 'IV. HỘP SỐ', content: 'Khả năng vào số, sang số', unit: '-', requirement: 'Mượt mà, không kẹt số/nhảy số' },
-  { id: 403, category: 'IV. HỘP SỐ', content: 'Tiếng ồn bất thường của hộp số khi chạy', unit: '-', requirement: 'Không hú, không kêu lạ' },
-  // V. LY HỢP
-  { id: 501, category: 'V. LY HỢP', content: 'Hành trình tự do của bàn đạp ly hợp', unit: '-', requirement: 'Theo đúng tiêu chuẩn kỹ thuật' },
-  { id: 502, category: 'V. LY HỢP', content: 'Tình trạng cắt trích công suất (côn)', unit: '-', requirement: 'Cắt dứt khoát, không trượt côn' },
-  { id: 503, category: 'V. LY HỢP', content: 'Xi lanh lực, bầu trợ lực ly hợp', unit: '-', requirement: 'Kín, không rò rỉ dầu' },
-  // VI. CÁC ĐĂNG
-  { id: 601, category: 'VI. CÁC ĐĂNG', content: 'Trục các đăng, then hoa, ổ bi trung gian', unit: '-', requirement: 'Không rơ lắc, không cong vênh' },
-  { id: 602, category: 'VI. CÁC ĐĂNG', content: 'Khớp chữ thập trục các đăng', unit: '-', requirement: 'Đầy đủ mỡ bôi trơn, không rơ' }
+  { id: 101, category: 'I. HỆ THỐNG LÁI', stt: 1, content: "Trục lái", unit: "", requirement: "Hoạt động linh hoạt, không có tiếng kêu, không rơ lỏng" },
+  { id: 102, category: 'I. HỆ THỐNG LÁI', stt: 2, content: "Bơm trợ lực", unit: "", requirement: "Hoạt động linh hoạt, cánh bơm không kêu, không bị mòn" },
+  { id: 103, category: 'I. HỆ THỐNG LÁI', stt: 3, content: "Rô tuyn lái", unit: "", requirement: "Không mòn, không rơ lỏng, không rách che bụi" },
+  { id: 104, category: 'I. HỆ THỐNG LÁI', stt: 4, content: "Bạc + bi + gioăng phớt thước lái", unit: "", requirement: "Không mòn, rơ lỏng, không chảy dầu" },
+  { id: 105, category: 'I. HỆ THỐNG LÁI', stt: 5, content: "Tuy ô trợ lực lái", unit: "", requirement: "Không móp méo, rò rỉ" },
+  { id: 106, category: 'I. HỆ THỐNG LÁI', stt: 6, content: "Độ rơ vành tay lái, Độ", unit: "", requirement: "≤ 10" },
+
+  { id: 201, category: 'II. HỆ THỐNG PHANH', stt: 1, content: "Piston phanh trước", unit: "", requirement: "Không bị mòn, rỗ" },
+  { id: 202, category: 'II. HỆ THỐNG PHANH', stt: 2, content: "Xi lanh phanh trước", unit: "", requirement: "Không bị mòn, rỗ" },
+  { id: 203, category: 'II. HỆ THỐNG PHANH', stt: 3, content: "Tang phanh", unit: "", requirement: "Không bị mòn gờ sâu" },
+  { id: 204, category: 'II. HỆ THỐNG PHANH', stt: 4, content: "Má phanh trước, mm", unit: "", requirement: "Không bị nứt. Chiều dày ≥ 1,0 mm" },
+  { id: 205, category: 'II. HỆ THỐNG PHANH', stt: 5, content: "Piston phanh sau", unit: "", requirement: "Không bị mòn, rỗ" },
+  { id: 206, category: 'II. HỆ THỐNG PHANH', stt: 6, content: "Xi lanh phanh sau", unit: "", requirement: "Không bị mòn, rỗ" },
+  { id: 207, category: 'II. HỆ THỐNG PHANH', stt: 7, content: "Bầu trợ lực phanh", unit: "", requirement: "Đàn hồi tốt, không nứt, han rỉ" },
+  { id: 208, category: 'II. HỆ THỐNG PHANH', stt: 8, content: "Má phanh sau, mm", unit: "", requirement: "Không bị nứt. Chiều dày ≥ 1,0 mm" },
+  { id: 209, category: 'II. HỆ THỐNG PHANH', stt: 9, content: "Tổng phanh", unit: "", requirement: "Không mòn rỗ, nứt vỡ" },
+  { id: 210, category: 'II. HỆ THỐNG PHANH', stt: 10, content: "Phanh tay, Tách", unit: "", requirement: "Không mòn, nứt vỡ, 2-4 tách" },
+  { id: 211, category: 'II. HỆ THỐNG PHANH', stt: 11, content: "Ống dẻo phanh", unit: "", requirement: "Không nứt, rò rỉ dầu" },
+
+  { id: 301, category: 'III. HỆ THỐNG TREO', stt: 1, content: "Giảm sóc trước", unit: "", requirement: "Không chảy dầu, làm việc êm dịu" },
+  { id: 302, category: 'III. HỆ THỐNG TREO', stt: 2, content: "Giảm sóc sau", unit: "", requirement: "Không chảy dầu, làm việc êm dịu" },
+  { id: 303, category: 'III. HỆ THỐNG TREO', stt: 3, content: "Bộ nhíp xe", unit: "", requirement: "Đàn hồi tốt, không mòn, nứt, gãy" },
+  { id: 304, category: 'III. HỆ THỐNG TREO', stt: 4, content: "Cao su nhíp", unit: "", requirement: "Không nứt, mòn, lão hóa" },
+  { id: 305, category: 'III. HỆ THỐNG TREO', stt: 5, content: "Bộ quang nhíp, ốc", unit: "", requirement: "Không mòn, rỗ, không nứt, cháy ren" },
+  { id: 306, category: 'III. HỆ THỐNG TREO', stt: 6, content: "Cụm quả táo chuyển hướng", unit: "", requirement: "Không mòn, nứt, hoạt động linh hoạt" },
+  { id: 307, category: 'III. HỆ THỐNG TREO', stt: 7, content: "Vỏ khớp quả bưởi (trái, phải)", unit: "", requirement: "Không mòn, nứt, rỗ" },
+  { id: 308, category: 'III. HỆ THỐNG TREO', stt: 8, content: "Lốp xe", unit: "", requirement: "Không mòn, nứt" },
+
+  { id: 401, category: 'IV. HỘP SỐ', stt: 1, content: "Phớt đuôi hộp số", unit: "", requirement: "Không nứt, rách, không chảy dầu" },
+  { id: 402, category: 'IV. HỘP SỐ', stt: 2, content: "Vòng bi số", unit: "", requirement: "Không mòn, rỗ, hoạt động êm dịu" },
+  { id: 403, category: 'IV. HỘP SỐ', stt: 3, content: "Cao su chân hộp số", unit: "", requirement: "Không nứt, rách, không mòn, lão hóa" },
+  { id: 404, category: 'IV. HỘP SỐ', stt: 4, content: "Trục hộp số", unit: "", requirement: "Không cong vênh, không mòn, rỗ" },
+  { id: 405, category: 'IV. HỘP SỐ', stt: 5, content: "Bánh răng", unit: "", requirement: "Không mòn, sứt mẻ, rỗ" },
+  { id: 406, category: 'IV. HỘP SỐ', stt: 6, content: "Vỏ hộp số", unit: "", requirement: "Không nứt, rách, không chảy dầu" },
+
+  { id: 501, category: 'V. LY HỢP', stt: 1, content: "Bàn đạp ly hợp", unit: "", requirement: "Linh hoạt, không bị rơ trục." },
+  { id: 502, category: 'V. LY HỢP', stt: 2, content: "Tổng côn", unit: "", requirement: "Hoạt động linh hoạt, không chảy dầu" },
+  { id: 503, category: 'V. LY HỢP', stt: 3, content: "Bơm con ly hợp", unit: "", requirement: "Hoạt động linh hoạt, không chảy dầu" },
+  { id: 504, category: 'V. LY HỢP', stt: 4, content: "Đĩa ép", unit: "", requirement: "Không bị mòn cháy, biến dạng, cong vênh" },
+  { id: 505, category: 'V. LY HỢP', stt: 5, content: "Đĩa ma sát", unit: "", requirement: "Không bị cháy, mòn chưa đến đinh tán, cốt đĩa chắc chắn" },
+  { id: 506, category: 'V. LY HỢP', stt: 6, content: "Bi tê", unit: "", requirement: "Hoạt động linh hoạt không có tiếng kêu trong quá trình làm việc" },
+  { id: 507, category: 'V. LY HỢP', stt: 7, content: "Bánh đà", unit: "", requirement: "Không bị mòn cháy, cong vênh, vành răng khởi động chắc chắn, không sứt mẻ, độ đảo mặt bánh đà ≤ 0,1mm" },
+  { id: 508, category: 'V. LY HỢP', stt: 8, content: "Càng cua", unit: "", requirement: "Không bị cong vênh" },
+  { id: 509, category: 'V. LY HỢP', stt: 9, content: "Hành trình tự do bàn đạp ly hợp, mm", unit: "", requirement: "Từ 8-14" },
+
+  { id: 601, category: 'VI. CÁC ĐĂNG', stt: 1, content: "Ống trục các đăng", unit: "", requirement: "Không móp méo, biến dạng, độ đảo trục các đăng" },
+  { id: 602, category: 'VI. CÁC ĐĂNG', stt: 2, content: "Mặt bích các đăng", unit: "", requirement: "Không móp méo, biến dạng" },
+  { id: 603, category: 'VI. CÁC ĐĂNG', stt: 3, content: "Ổ trục then hoa", unit: "", requirement: "Không rơ lỏng, hoạt động linh hoạt" },
+  { id: 604, category: 'VI. CÁC ĐĂNG', stt: 4, content: "Bi chữ thập các đăng", unit: "", requirement: "Không rơ lỏng, hoạt động linh hoạt" }
 ];
 
 const ELECTRICAL_INSPECTION_ITEMS = [
-  // I. NGUỒN ĐIỆN VÀ KHỞI ĐỘNG
-  { id: 701, category: 'I. NGUỒN ĐIỆN VÀ KHỞI ĐỘNG', content: 'Bình điện (Acquy), khóa điện', unit: '-', requirement: 'Đủ điện áp, bắt chặt' },
-  { id: 702, category: 'I. NGUỒN ĐIỆN VÀ KHỞI ĐỘNG', content: 'Máy phát điện', unit: '-', requirement: 'Hoạt động tốt, phát đủ dòng' },
-  { id: 703, category: 'I. NGUỒN ĐIỆN VÀ KHỞI ĐỘNG', content: 'Điện áp khi khởi động', unit: 'V', requirement: '≥ 10.5V' },
-  { id: 704, category: 'I. NGUỒN ĐIỆN VÀ KHỞI ĐỘNG', content: 'Điện áp tại vòng quay lớn nhất', unit: 'V', requirement: '13.6 ÷ 14.7V' },
-  { id: 705, category: 'I. NGUỒN ĐIỆN VÀ KHỞI ĐỘNG', content: 'Máy khởi động (Củ đề)', unit: '-', requirement: 'Khởi động nhạy, êm' },
-  
-  // II. CHIẾU SÁNG VÀ TÍN HIỆU
-  { id: 801, category: 'II. CHIẾU SÁNG VÀ TÍN HIỆU', content: 'Hệ thống đèn chiếu sáng (Pha, cốt, sương mù)', unit: '-', requirement: 'Sáng đều, đúng luồng sáng' },
-  { id: 802, category: 'II. CHIẾU SÁNG VÀ TÍN HIỆU', content: 'Hệ thống đèn tín hiệu (Xi-nhan, hazard, phanh, lùi)', unit: '-', requirement: 'Hoạt động tốt, đúng tần số' },
-  { id: 803, category: 'II. CHIẾU SÁNG VÀ TÍN HIỆU', content: 'Còi điện', unit: '-', requirement: 'Âm thanh chuẩn, đúng âm lượng' },
-
-  // III. HỆ THỐNG PHỤ TRỢ VÀ ĐÁNH LỬA
-  { id: 901, category: 'III. HỆ THỐNG PHỤ TRỢ VÀ ĐÁNH LỬA', content: 'Hệ thống gạt mưa, bơm nước rửa kính', unit: '-', requirement: 'Gạt sạch, phun đều' },
-  { id: 902, category: 'III. HỆ THỐNG PHỤ TRỢ VÀ ĐÁNH LỬA', content: 'Bó dây điện toàn xe', unit: '-', requirement: 'Bọc cách điện tốt, không rách gãy' },
-  { id: 903, category: 'III. HỆ THỐNG PHỤ TRỢ VÀ ĐÁNH LỬA', content: 'Hệ thống đánh lửa (đối với xe xăng)', unit: '-', requirement: 'Đánh lửa đều, mạnh' },
-  { id: 904, category: 'III. HỆ THỐNG PHỤ TRỢ VÀ ĐÁNH LỬA', content: 'Hệ thống cảm biến, đồng hồ táp lô', unit: '-', requirement: 'Hiển thị chính xác các thông số' }
+  { id: 701, category: '', stt: '1', content: "Máy phát", unit: "", requirement: "Hoạt động ổn định, vỏ không móp méo, có tiếng kêu lạ" },
+  { id: 702, category: '', stt: '-', content: "Điện áp khi khởi động", unit: "V", requirement: "≥10,5" },
+  { id: 703, category: '', stt: '-', content: "Điện áp tại vòng quay lớn nhất", unit: "V", requirement: "13,6÷14,7" },
+  { id: 704, category: '', stt: '2', content: "Máy khởi động", unit: "", requirement: "Hoạt động ổn định, vỏ không móp méo, có tiếng kêu lạ" },
+  { id: 705, category: '', stt: '3', content: "Hệ thống đèn tín hiệu, chiếu sáng, còi", unit: "", requirement: "Đúng chủng loại, hoạt động ổn định, tin cậy" },
+  { id: 706, category: '', stt: '4', content: "Hệ thống cảm biến, đồng hồ", unit: "", requirement: "Đúng chủng loại, hoạt động ổn định, tin cậy" },
+  { id: 707, category: '', stt: '5', content: "Hệ thống gạt mưa, bơm nước rửa kính", unit: "", requirement: "Đúng chủng loại, hoạt động ổn định, tin cậy" },
+  { id: 708, category: '', stt: '6', content: "Bó dây điện", unit: "", requirement: "Không vỡ, nứt, chạm chập" },
+  { id: 709, category: '', stt: '7', content: "Hệ thống đánh lửa", unit: "", requirement: "Đúng chủng loại, hoạt động ổn định, tin cậy" },
+  { id: 710, category: '', stt: '8', content: "Bình điện, khóa điện", unit: "", requirement: "Đầy đủ, không nứt vỡ, hoạt động ổn định" }
 ];
 
 const getInspectionItems = (type?: string) => {
@@ -89,7 +109,7 @@ const getInspectionItems = (type?: string) => {
   return DEFAULT_INSPECTION_ITEMS;
 };
 
-export const EngineInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, existingFormId, templateName, stageName, templateType, initialData, onSaved, onClose }) => {
+export const EngineInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, existingFormId, targetSessionId, templateName, stageName, templateType, initialData, onSaved, onClose }) => {
   const [zoom, setZoom] = useState(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 800) {
       return Math.max(30, Math.floor((window.innerWidth) / 7.94));
@@ -110,14 +130,14 @@ export const EngineInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, exi
       xxNumber1: '',
       stageNumber: '',
       xxNumber2: '',
-      sheetNumber: '',
+      sheetNumber: templateType === 'CHASSIS_PRE_REPAIR' ? '04' : '01',
       items: defaultItems.map(item => ({ ...item, actual: '' })),
-      conclusion: ''
+      conclusion: templateType === 'ELECTRICAL_PRE_REPAIR' ? 'Phần điện đã được kiểm tra đúng Quy trình công nghệ.' : templateType === 'CHASSIS_PRE_REPAIR' ? 'Phần gầm trước khi vào sửa chữa đã được kiểm tra đúng Quy trình công nghệ.' : 'Cụm động cơ đã được kiểm tra đúng Quy trình công nghệ.'
     };
   });
 
   const resolvedTemplateName = templateName || 'Engine Inspection Before Repair';
-  const resolvedStageName = stageName || 'Kiểm tra động cơ trước khi sửa chữa';
+  const resolvedStageName = stageName || (templateType === 'ELECTRICAL_PRE_REPAIR' ? 'Kiểm tra phần điện trước khi sửa chữa' : templateType === 'CHASSIS_PRE_REPAIR' ? 'Kiểm tra phần gầm trước khi sửa chữa' : 'Kiểm tra động cơ trước khi sửa chữa');
 
   const [docId, setDocId] = useState(() => {
     if (existingFormId) return existingFormId;
@@ -222,9 +242,9 @@ export const EngineInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, exi
             xxNumber1: '',
             stageNumber: '',
             xxNumber2: '',
-            sheetNumber: '',
+            sheetNumber: templateType === 'CHASSIS_PRE_REPAIR' ? '04' : '01',
             items: defaultItems.map(item => ({ ...item, actual: '' })),
-            conclusion: ''
+            conclusion: templateType === 'ELECTRICAL_PRE_REPAIR' ? 'Phần điện đã được kiểm tra đúng Quy trình công nghệ.' : templateType === 'CHASSIS_PRE_REPAIR' ? 'Phần gầm trước khi vào sửa chữa đã được kiểm tra đúng Quy trình công nghệ.' : 'Cụm động cơ đã được kiểm tra đúng Quy trình công nghệ.'
           });
         }
       }
@@ -254,12 +274,13 @@ export const EngineInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, exi
       }
 
       const payload = {
+        repairSessionId: targetSessionId || (docExists ? existingDoc?.repairSessionId : null),
         id: docId,
         vehicleId: formVehicleId,
         templateType: templateType,
         templateName: docExists && existingDoc?.templateName ? existingDoc.templateName : resolvedTemplateName,
         stageName: docExists && existingDoc?.stageName ? existingDoc.stageName : resolvedStageName,
-        formData: formData,
+        formData: normalizeNFC(formData),
         isDeleted: false,
         createdBy: docExists && existingDoc?.createdBy ? existingDoc.createdBy : (currentUser?.uid || currentUser?.username || 'unknown'),
         createdByName: docExists && existingDoc?.createdByName ? existingDoc.createdByName : (currentUser?.fullName || 'unknown'),
@@ -268,9 +289,9 @@ export const EngineInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, exi
       };
 
       if (docExists) {
-        await DataService.update('repairForms', docId, payload);
+        await DataService.update('repairForms', docId, normalizeNFC(payload));
       } else {
-        await DataService.save('repairForms', payload);
+        await DataService.save('repairForms', normalizeNFC(payload));
       }
       
       console.log(
@@ -357,7 +378,7 @@ export const EngineInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, exi
           deletedByName: currentUser?.fullName || currentUser?.username || "Người dùng",
           deletedByRole: currentUser?.role || "Không xác định",
         };
-        await DataService.update('repairForms', docId, updatePayload);
+        await DataService.update('repairForms', docId, normalizeNFC(updatePayload));
       } catch (err) {
         console.warn('Could not update firebase for delete, continuing locally:', err);
       }
@@ -532,7 +553,7 @@ export const EngineInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, exi
               <p className="text-base m-0 leading-tight">CỤC HC - KT</p>
               <p className="text-base m-0 leading-tight">Tiểu đoàn 30</p>
               <p className="text-base m-0 leading-tight">Đại đội S/C xe máy</p>
-              <p className="text-base m-0 leading-tight">Tổ S/C Máy, gầm</p>
+              <p className="text-base m-0 leading-tight">{templateType === 'ELECTRICAL_PRE_REPAIR' ? 'Tổ S/C Điện' : 'Tổ S/C Máy, gầm'}</p>
             </div>
             <div className="text-right">
               {/* Other corner content, usually blank or specific notes */}
@@ -540,7 +561,7 @@ export const EngineInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, exi
           </div>
 
           <div className="text-center mb-6">
-            <h1 className="text-xl font-bold uppercase m-0 leading-tight mb-2">PHIẾU KIỂM TRA: Số 1</h1>
+            <h1 className="text-xl font-bold uppercase m-0 leading-tight mb-2">PHIẾU KIỂM TRA: Số {templateType === 'ELECTRICAL_PRE_REPAIR' ? '3' : templateType === 'CHASSIS_PRE_REPAIR' ? '2' : '1'}</h1>
           </div>
 
           <div className="mb-6 grid grid-cols-2 gap-4 text-[15px] leading-relaxed">
@@ -549,8 +570,8 @@ export const EngineInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, exi
                 <span className="whitespace-nowrap">Tên TBKT:</span>
                 <input 
                   type="text" 
-                  value={formData.vehicleName}
-                  onChange={(e) => setFormData({...formData, vehicleName: e.target.value})}
+                  value={typeof (formData.vehicleName) === 'string' ? (formData.vehicleName).normalize('NFC') : (formData.vehicleName)}
+                  onChange={(e) => setFormData({...formData, vehicleName: e.target.value.normalize('NFC')})}
                   className="border-b border-dotted border-black flex-1 bg-transparent outline-none pb-0 px-2 font-bold" 
                 />
                 <button
@@ -601,8 +622,8 @@ export const EngineInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, exi
                 <span className="whitespace-nowrap">Số hiệu:</span>
                 <input 
                   type="text" 
-                  value={formData.vehicleNumber}
-                  onChange={(e) => setFormData({...formData, vehicleNumber: e.target.value})}
+                  value={typeof (formData.vehicleNumber) === 'string' ? (formData.vehicleNumber).normalize('NFC') : (formData.vehicleNumber)}
+                  onChange={(e) => setFormData({...formData, vehicleNumber: e.target.value.normalize('NFC')})}
                   className="border-b border-dotted border-black flex-1 bg-transparent outline-none pb-0 px-2 font-bold" 
                 />
               </div>
@@ -610,8 +631,8 @@ export const EngineInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, exi
                 <span className="whitespace-nowrap">Số XX:</span>
                 <input 
                   type="text" 
-                  value={formData.xxNumber1}
-                  onChange={(e) => setFormData({...formData, xxNumber1: e.target.value})}
+                  value={typeof (formData.xxNumber1) === 'string' ? (formData.xxNumber1).normalize('NFC') : (formData.xxNumber1)}
+                  onChange={(e) => setFormData({...formData, xxNumber1: e.target.value.normalize('NFC')})}
                   className="border-b border-dotted border-black flex-1 bg-transparent outline-none pb-0 px-2 font-bold" 
                 />
               </div>
@@ -626,8 +647,8 @@ export const EngineInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, exi
                 <span className="whitespace-nowrap">Số hiệu:</span>
                 <input 
                   type="text" 
-                  value={formData.stageNumber}
-                  onChange={(e) => setFormData({...formData, stageNumber: e.target.value})}
+                  value={typeof (formData.stageNumber) === 'string' ? (formData.stageNumber).normalize('NFC') : (formData.stageNumber)}
+                  onChange={(e) => setFormData({...formData, stageNumber: e.target.value.normalize('NFC')})}
                   className="border-b border-dotted border-black flex-1 bg-transparent outline-none pb-0 px-2 font-bold" 
                 />
               </div>
@@ -635,8 +656,8 @@ export const EngineInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, exi
                 <span className="whitespace-nowrap">Số XX:</span>
                 <input 
                   type="text" 
-                  value={formData.xxNumber2}
-                  onChange={(e) => setFormData({...formData, xxNumber2: e.target.value})}
+                  value={typeof (formData.xxNumber2) === 'string' ? (formData.xxNumber2).normalize('NFC') : (formData.xxNumber2)}
+                  onChange={(e) => setFormData({...formData, xxNumber2: e.target.value.normalize('NFC')})}
                   className="border-b border-dotted border-black flex-1 bg-transparent outline-none pb-0 px-2 font-bold" 
                 />
               </div>
@@ -644,8 +665,8 @@ export const EngineInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, exi
                 <span className="whitespace-nowrap">Tờ số:</span>
                 <input 
                   type="text" 
-                  value={formData.sheetNumber}
-                  onChange={(e) => setFormData({...formData, sheetNumber: e.target.value})}
+                  value={typeof (formData.sheetNumber) === 'string' ? (formData.sheetNumber).normalize('NFC') : (formData.sheetNumber)}
+                  onChange={(e) => setFormData({...formData, sheetNumber: e.target.value.normalize('NFC')})}
                   className="border-b border-dotted border-black flex-1 bg-transparent outline-none pb-0 px-2 font-bold" 
                 />
               </div>
@@ -661,7 +682,8 @@ export const EngineInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, exi
                   <th className="border border-black px-2 py-2 text-center w-24 font-bold">Đơn vị đo</th>
                   <th className="border border-black px-2 py-2 text-center w-40 font-bold">Yêu cầu</th>
                   <th className="border border-black px-2 py-2 text-center w-48 font-bold">Thực tế</th>
-                </tr>
+                  <th className="border border-black px-2 py-2 text-center w-32 font-bold">Ngày thực hiện</th>
+                  </tr>
               </thead>
               <tbody>
                 {(() => {
@@ -681,29 +703,42 @@ export const EngineInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, exi
                           </tr>
                         )}
                         <tr className="flex flex-col sm:table-row hover:bg-stone-50/50 transition-colors border-b-2 sm:border-b border-stone-300 sm:border-black mb-2 sm:mb-0 h-auto sm:h-auto">
-                          <td className="hidden sm:table-cell border border-black px-2 py-2 text-center">{index + 1}</td>
+                          <td className="hidden sm:table-cell border border-black px-2 py-2 text-center">{item.stt || (index + 1)}</td>
                           <td className="border-t border-x sm:border-y-0 sm:border-l-0 sm:border-r border-stone-300 sm:border-black p-2.5 sm:px-2 font-medium bg-stone-100 sm:bg-transparent">
-                            <span className="sm:hidden font-bold mr-1">{index + 1}.</span>
+                            <span className="sm:hidden font-bold mr-1">{item.stt || (index + 1)}.</span>
                             {item.content}
                           </td>
                           <td className="border-x border-b sm:border border-stone-300 sm:border-black p-2 sm:p-2 flex sm:table-cell items-center justify-between bg-white sm:bg-transparent">
                             <span className="sm:hidden text-xs text-stone-500 font-medium ml-1">Đơn vị đo</span>
-                            <span className="text-right sm:text-center text-stone-800">{item.unit}</span>
+                            <span className="text-right sm:text-center text-stone-800 whitespace-pre-line">{item.unit}</span>
                           </td>
                           <td className="border-x border-b sm:border border-stone-300 sm:border-black p-2 flex sm:table-cell items-center justify-between bg-white sm:bg-transparent">
                             <span className="sm:hidden text-xs text-stone-500 font-medium ml-1">Yêu cầu</span>
-                            <span className="text-right sm:text-center text-stone-800 font-medium sm:font-normal">{item.requirement}</span>
+                            <span className="text-right sm:text-center text-stone-800 font-medium sm:font-normal whitespace-pre-line">{item.requirement}</span>
                           </td>
                           <td className="border-x border-b sm:border border-stone-300 sm:border-black p-1 flex sm:table-cell flex-col sm:flex-row items-stretch sm:items-center justify-between bg-white sm:bg-transparent">
                             <span className="sm:hidden text-xs text-stone-500 font-medium ml-2 mt-1 mb-1">Thực tế</span>
 
                             <AutoResizeTextarea 
-                              value={item.actual || ''}
-                              onChange={(e) => handleItemChange(index, e.target.value)}
+                              value={typeof (item.actual || '') === 'string' ? (item.actual || '').normalize('NFC') : (item.actual || '')}
+                              onChange={(e) => handleItemChange(index, e.target.value.normalize('NFC'))}
                               className="w-full h-full min-h-[36px] sm:min-h-[auto] bg-stone-50 sm:bg-transparent border border-stone-200 sm:border-transparent outline-none px-3 sm:px-2 py-2 text-left sm:text-center rounded sm:rounded-none font-bold text-stone-800 sm:text-emerald-700 print:text-black"
                             />
                           </td>
-                        </tr>
+                            <td className="border border-black px-2 py-2">
+                              <input 
+                                type="date" 
+                                className="w-full bg-transparent outline-none text-center"
+                                value={typeof (item.ngayThucHien || '') === 'string' ? (item.ngayThucHien || '').normalize('NFC') : (item.ngayThucHien || '')}
+                                onChange={(e) => {
+                                  const newItems = [...formData.items];
+                                  newItems[index].ngayThucHien = e.target.value.normalize('NFC');
+                                  setFormData({ ...formData, items: newItems });
+                                }}
+                                
+                              />
+                            </td>
+                            </tr>
                       </React.Fragment>
                     );
                   });
@@ -717,10 +752,10 @@ export const EngineInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, exi
           <div className="mb-8">
             <h3 className="font-bold text-[15px] mb-2">Kết luận:</h3>
             <textarea 
-              value={formData.conclusion}
-              onChange={(e) => setFormData({...formData, conclusion: e.target.value})}
+              value={typeof (formData.conclusion) === 'string' ? (formData.conclusion).normalize('NFC') : (formData.conclusion)}
+              onChange={(e) => setFormData({...formData, conclusion: e.target.value.normalize('NFC')})}
               className="w-full h-32 border border-black p-3 outline-none text-[15px] leading-relaxed resize-none font-bold text-emerald-700 print:text-black print:border-none print:p-0 print:h-auto"
-              placeholder="Nhập kết luận kiểm tra..."
+              placeholder={templateType === 'ELECTRICAL_PRE_REPAIR' ? 'Phần điện đã được kiểm tra đúng Quy trình công nghệ.' : templateType === 'CHASSIS_PRE_REPAIR' ? 'Phần gầm trước khi vào sửa chữa đã được kiểm tra đúng Quy trình công nghệ.' : 'Cụm động cơ đã được kiểm tra đúng Quy trình công nghệ.'}
             />
           </div>
 
@@ -730,8 +765,8 @@ export const EngineInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, exi
               <input 
                 type="text" 
                 className="w-full text-center outline-none bg-transparent font-bold text-[15px] print:text-black" 
-                value={formData['sign_THỢ KIỂM TRA'] || ''} 
-                onChange={(e) => setFormData({...formData, 'sign_THỢ KIỂM TRA': e.target.value})}
+                value={typeof (formData['sign_THỢ KIỂM TRA'] || '') === 'string' ? (formData['sign_THỢ KIỂM TRA'] || '').normalize('NFC') : (formData['sign_THỢ KIỂM TRA'] || '')} 
+                onChange={(e) => setFormData({...formData, 'sign_THỢ KIỂM TRA': e.target.value.normalize('NFC')})}
                 placeholder="..."
               />
             </div>
@@ -740,8 +775,8 @@ export const EngineInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, exi
               <input 
                 type="text" 
                 className="w-full text-center outline-none bg-transparent font-bold text-[15px] print:text-black" 
-                value={formData['sign_TỔ TRƯỞNG'] || ''} 
-                onChange={(e) => setFormData({...formData, 'sign_TỔ TRƯỞNG': e.target.value})}
+                value={typeof (formData['sign_TỔ TRƯỞNG'] || '') === 'string' ? (formData['sign_TỔ TRƯỞNG'] || '').normalize('NFC') : (formData['sign_TỔ TRƯỞNG'] || '')} 
+                onChange={(e) => setFormData({...formData, 'sign_TỔ TRƯỞNG': e.target.value.normalize('NFC')})}
                 placeholder="..."
               />
             </div>
@@ -750,8 +785,8 @@ export const EngineInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, exi
               <input 
                 type="text" 
                 className="w-full text-center outline-none bg-transparent font-bold text-[15px] print:text-black" 
-                value={formData['sign_KCS'] || ''} 
-                onChange={(e) => setFormData({...formData, 'sign_KCS': e.target.value})}
+                value={typeof (formData['sign_KCS'] || '') === 'string' ? (formData['sign_KCS'] || '').normalize('NFC') : (formData['sign_KCS'] || '')} 
+                onChange={(e) => setFormData({...formData, 'sign_KCS': e.target.value.normalize('NFC')})}
                 placeholder="..."
               />
             </div>
@@ -760,8 +795,8 @@ export const EngineInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, exi
               <input 
                 type="text" 
                 className="w-full text-center outline-none bg-transparent font-bold text-[15px] print:text-black" 
-                value={formData['sign_ĐẠI ĐỘI TRƯỞNG'] || ''} 
-                onChange={(e) => setFormData({...formData, 'sign_ĐẠI ĐỘI TRƯỞNG': e.target.value})}
+                value={typeof (formData['sign_ĐẠI ĐỘI TRƯỞNG'] || '') === 'string' ? (formData['sign_ĐẠI ĐỘI TRƯỞNG'] || '').normalize('NFC') : (formData['sign_ĐẠI ĐỘI TRƯỞNG'] || '')} 
+                onChange={(e) => setFormData({...formData, 'sign_ĐẠI ĐỘI TRƯỞNG': e.target.value.normalize('NFC')})}
                 placeholder="..."
               />
             </div>

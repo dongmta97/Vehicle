@@ -1,82 +1,37 @@
-import { DataService, isFirebaseConfigured, auth } from '../firebase';
-import { User, UserRole } from '../types';
-
-// Let's seed a dynamic list of default users in LocalStorage to guarantee first-time login
-const DEFAULT_USERS: User[] = [
-  {
-    uid: 'ADMIN-ID',
-    username: 'admin',
-    fullName: 'Lê Phương Đông',
-    rank: 'Thượng tá',
-    unit: 'Ban Kỹ thuật - TĐ30',
-    role: 'admin',
-    isActive: true,
-    createdAt: new Date('2026-05-10T00:00:00Z').toISOString(),
-    createdBy: 'system',
-    password: '123'
-  }
-];
-
-// Helper to seed localStorage
-const ensureLocalSeeding = (): User[] => {
-  const stored = localStorage.getItem('local_users');
-  if (!stored) {
-    localStorage.setItem('local_users', JSON.stringify(DEFAULT_USERS));
-    return DEFAULT_USERS;
-  }
-  try {
-    return JSON.parse(stored);
-  } catch {
-    localStorage.setItem('local_users', JSON.stringify(DEFAULT_USERS));
-    return DEFAULT_USERS;
-  }
-};
+import { DataService } from '../firebase';
+import { User } from '../types';
 
 export const userService = {
   /**
-   * Loads all users from Firestore or LocalStorage fallback
+   * Loads all users from Firestore or LocalStorage cache fallback
    */
   async loadUsers(): Promise<User[]> {
-    ensureLocalSeeding();
-    
     try {
       const dbUsers = await DataService.load('users');
       if (Array.isArray(dbUsers) && dbUsers.length > 0) {
-        // Build map/merge to handle full persistence
-        const localList = ensureLocalSeeding();
-        const merged: User[] = [...localList];
-        
-        dbUsers.forEach((u: any) => {
-          const uFormatted: User = {
-            uid: u.id || u.uid,
-            username: u.username,
-            fullName: u.fullName,
-            rank: u.rank,
-            unit: u.unit,
-            role: u.role || 'tro_ly_ky_thuat',
-            isActive: typeof u.isActive === 'boolean' ? u.isActive : true,
-            createdAt: u.createdAt || new Date().toISOString(),
-            createdBy: u.createdBy || 'unknown',
-            password: u.password || '123'
-          };
-          
-          const idx = merged.findIndex(exist => exist.username === uFormatted.username);
-          if (idx >= 0) {
-            merged[idx] = uFormatted;
-          } else {
-            merged.push(uFormatted);
-          }
-        });
-        
-        // Persist back to local storage so offline sync is pristine
-        localStorage.setItem('local_users', JSON.stringify(merged));
-        
-        // Synchronize current_user if they are in the merged list
+        const formattedUsers: User[] = dbUsers.map((u: any) => ({
+          uid: u.uid || u.id,
+          _firestoreDocId: u._firestoreDocId || u.id || u.uid,
+          username: u.username,
+          fullName: u.fullName,
+          rank: u.rank,
+          unit: u.unit,
+          role: u.role || 'tro_ly_ky_thuat',
+          isActive: typeof u.isActive === 'boolean' ? u.isActive : true,
+          createdAt: u.createdAt || new Date().toISOString(),
+          createdBy: u.createdBy || 'system',
+          password: u.password || '123'
+        }));
+
+        // Sync cache to local_users
+        localStorage.setItem('local_users', JSON.stringify(formattedUsers));
+
+        // Synchronize current_user session if active
         const currentStored = localStorage.getItem('current_user');
         if (currentStored) {
           try {
             const cur = JSON.parse(currentStored);
-            const updatedCur = merged.find(u => u.username === cur.username || u.uid === cur.uid);
+            const updatedCur = formattedUsers.find(u => u.username === cur.username || u.uid === cur.uid);
             if (updatedCur) {
               localStorage.setItem('current_user', JSON.stringify(updatedCur));
             }
@@ -84,14 +39,27 @@ export const userService = {
             console.warn("Failed to synchronize current_user:", err);
           }
         }
-        
-        return merged;
+
+        return formattedUsers;
       }
     } catch (err) {
-      console.warn("Firestore getUsers failed, reading from localStorage:", err);
+      console.warn("Firestore getUsers failed, reading from localStorage cache:", err);
     }
-    
-    return ensureLocalSeeding();
+
+    // Fallback read from cache
+    return this.getCacheUsers();
+  },
+
+  /**
+   * Gets cached users from LocalStorage without auto-seeding
+   */
+  getCacheUsers(): User[] {
+    try {
+      const stored = localStorage.getItem('local_users');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
   },
 
   /**
@@ -119,8 +87,8 @@ export const userService = {
       console.warn("Firestore save 'users' failed:", err);
     }
 
-    // 2. Synchronous local state sync
-    const list = ensureLocalSeeding();
+    // 2. Synchronous local cache sync
+    const list = this.getCacheUsers();
     const existingIdx = list.findIndex(u => u.username === user.username);
     if (existingIdx >= 0) {
       list[existingIdx] = user;
@@ -146,31 +114,64 @@ export const userService = {
   },
 
   /**
-   * Deletes a user by uid/id
+   * Deletes a user by User object or identifier (uid / username)
    */
-  async deleteUser(username: string): Promise<void> {
-    if (username === 'admin') {
+  async deleteUser(userObjOrIdentifier: User | string): Promise<void> {
+    if (!userObjOrIdentifier) return;
+
+    let targetUser: User | undefined;
+    let identifier = '';
+
+    if (typeof userObjOrIdentifier === 'string') {
+      identifier = userObjOrIdentifier;
+      const users = await this.loadUsers();
+      targetUser = users.find(u => 
+        u._firestoreDocId === identifier ||
+        u.uid === identifier || 
+        u.username === identifier || 
+        (u.username && identifier && u.username.toLowerCase() === identifier.toLowerCase())
+      );
+    } else {
+      targetUser = userObjOrIdentifier;
+      identifier = targetUser._firestoreDocId || targetUser.uid || targetUser.username;
+    }
+
+    if (targetUser?.username === 'admin' || identifier === 'admin') {
       throw new Error("Không được phép xóa tài khoản quản trị hệ thống gốc (admin).");
     }
 
-    try {
-      const users = await this.loadUsers();
-      const targetUser = users.find(u => u.username === username);
-      const docId = targetUser?.uid || username;
-      await DataService.delete('users', docId);
-    } catch (err) {
-      console.warn("Firestore delete 'user' failed:", err);
+    const primaryDocId = targetUser?._firestoreDocId || targetUser?.uid || identifier;
+    const uidDocId = targetUser?.uid;
+    const usernameDocId = targetUser?.username;
+
+    if (!primaryDocId) {
+      throw new Error("Không xác định được Document ID của tài khoản.");
     }
 
-    const list = ensureLocalSeeding();
-    const filtered = list.filter(u => u.username !== username);
-    localStorage.setItem('local_users', JSON.stringify(filtered));
-    
     try {
-      const dataServiceList = JSON.parse(localStorage.getItem('local_users') || "[]");
-      const dsFiltered = dataServiceList.filter((u: any) => u.username !== username);
-      localStorage.setItem('local_users', JSON.stringify(dsFiltered));
-    } catch (e) {}
+      await DataService.delete('users', primaryDocId);
+    } catch (err) {
+      console.error("Firestore delete 'user' failed:", err);
+      throw err;
+    }
+
+    // Secondary cleanup if uid or username differed from primaryDocId
+    if (uidDocId && uidDocId !== primaryDocId) {
+      await DataService.delete('users', uidDocId).catch(() => {});
+    }
+    if (usernameDocId && usernameDocId !== primaryDocId && usernameDocId !== uidDocId) {
+      await DataService.delete('users', usernameDocId).catch(() => {});
+    }
+
+    const list = this.getCacheUsers();
+    const filtered = list.filter(u => 
+      u._firestoreDocId !== primaryDocId && 
+      u.uid !== primaryDocId && 
+      u.uid !== uidDocId && 
+      u.username !== usernameDocId && 
+      u.username !== identifier
+    );
+    localStorage.setItem('local_users', JSON.stringify(filtered));
   },
 
   /**

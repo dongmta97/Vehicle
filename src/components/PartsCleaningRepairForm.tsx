@@ -1,3 +1,4 @@
+import { normalizeNFC } from '../utils/stringUtils';
 import { canEditDocument } from '../services/ownershipService';
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Save, FileDown, Printer, Plus } from 'lucide-react';
@@ -7,6 +8,7 @@ import { DataService } from '../firebase';
 import { AutoResizeTextarea } from './AutoResizeTextarea';
 
 interface Props {
+  targetSessionId?: string;
   vehicle?: Vehicle | null;
   existingFormId?: string;
   templateName?: string;
@@ -56,7 +58,7 @@ const getInspectionItems = (type?: string) => {
   return ITEMS;
 };
 
-export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingFormId, templateName, stageName, templateType, initialData, onSaved, onClose }) => {
+export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingFormId, targetSessionId, templateName, stageName, templateType, initialData, onSaved, onClose }) => {
   const [zoom, setZoom] = useState(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 800) {
       return Math.max(30, Math.floor((window.innerWidth) / 7.94));
@@ -91,9 +93,9 @@ export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingForm
       ketLuan: "Chi tiết, linh kiện của cụm động cơ được tẩy rửa làm sạch đúng Quy trình công nghệ.",
       ngayLap: `${String(new Date().getDate()).padStart(2, '0')}/${String(new Date().getMonth() + 1).padStart(2, '0')}/${new Date().getFullYear()}`,
       toTruong: "",
-      daiDoiTruong: "Trần Văn Giáp",
-      nhanVienKCS: "Nguyễn Văn Đăng",
-      chiHuyTieuDoan: "Thiếu tá Thừa Trung Hải",
+      daiDoiTruong: "",
+      nhanVienKCS: "",
+      chiHuyTieuDoan: "",
       status: 'DRAFT',
       createdAt: nowStr,
       updatedAt: nowStr,
@@ -232,6 +234,7 @@ export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingForm
       }
 
       const payload = {
+        repairSessionId: targetSessionId || (docExists ? existingDoc?.repairSessionId : null),
         id: docId,
         vehicleId: formVehicleId,
         templateType: templateType || 'GENERAL_DISASSEMBLY_REPAIR',
@@ -252,9 +255,9 @@ export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingForm
       };
 
       if (docExists) {
-        await DataService.update('repairForms', docId, payload);
+        await DataService.update('repairForms', docId, normalizeNFC(payload));
       } else {
-        await DataService.save('repairForms', payload);
+        await DataService.save('repairForms', normalizeNFC(payload));
       }
       
       // Update local storage cache
@@ -335,7 +338,7 @@ export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingForm
           deletedByName: currentUser?.fullName || currentUser?.username || "Người dùng",
           deletedByRole: currentUser?.role || "Không xác định",
         };
-        await DataService.update('repairForms', docId, updatePayload);
+        await DataService.update('repairForms', docId, normalizeNFC(updatePayload));
       } catch (err) {
         console.warn('Could not update firebase for delete:', err);
       }
@@ -427,8 +430,9 @@ export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingForm
     }
   };
 
-  const currentUserRole = getCurrentUserSession()?.role || "user";
-  const isAdmin = currentUserRole === "admin" || currentUserRole === "dai_doi_truong" || currentUserRole === "tro_ly_ky_thuat";
+  const currentUser = getCurrentUserSession();
+  const currentUserRole = currentUser?.role;
+  const isAdmin = currentUserRole === "admin";
   const isLocked = formData.originalStatus === 'APPROVED';
 
   const tongGioCong = formData.items?.reduce((sum: number, item: any) => sum + (parseFloat(item.gioCong) || 0), 0) || 0;
@@ -499,12 +503,12 @@ export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingForm
           </button>
           
           <select 
-            value={formData.status || 'DRAFT'}
+            value={typeof (formData.status || 'DRAFT') === 'string' ? (formData.status || 'DRAFT').normalize('NFC') : (formData.status || 'DRAFT')}
             onChange={(e) => setFormData({ 
               ...formData, 
-              status: e.target.value,
-              completedAt: e.target.value === 'COMPLETED' ? new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : (formData.completedAt || null),
-              approvedAt: e.target.value === 'APPROVED' ? new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : (formData.approvedAt || null),
+              status: e.target.value.normalize('NFC'),
+              completedAt: e.target.value.normalize('NFC') === 'COMPLETED' ? new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : (formData.completedAt || null),
+              approvedAt: e.target.value.normalize('NFC') === 'APPROVED' ? new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : (formData.approvedAt || null),
              })}
             disabled={isLocked && !isAdmin}
             className={`px-3 py-2 text-sm font-medium rounded-lg border outline-none ${
@@ -559,8 +563,8 @@ export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingForm
             <h1 className="text-xl font-bold uppercase m-0 leading-tight">PHIẾU SỬA CHỮA: Số</h1>
             <input 
               type="text" 
-              value={formData.soPhieu !== undefined ? formData.soPhieu : ''}
-              onChange={(e) => setFormData({...formData, soPhieu: e.target.value})}
+              value={typeof (formData.soPhieu !== undefined ? formData.soPhieu : '') === 'string' ? (formData.soPhieu !== undefined ? formData.soPhieu : '').normalize('NFC') : (formData.soPhieu !== undefined ? formData.soPhieu : '')}
+              onChange={(e) => setFormData({...formData, soPhieu: e.target.value.normalize('NFC')})}
               disabled={isLocked && !isAdmin}
               className="text-xl font-bold border-b border-dotted border-black bg-transparent outline-none w-16 text-center disabled:opacity-75 disabled:cursor-not-allowed" 
             />
@@ -572,8 +576,8 @@ export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingForm
                 <span className="whitespace-nowrap">Tên TBKT:</span>
                 <input 
                   type="text" 
-                  value={formData.tenTBKT !== undefined ? formData.tenTBKT : formData.vehicleName}
-                  onChange={(e) => setFormData({...formData, tenTBKT: e.target.value})}
+                  value={typeof (formData.tenTBKT !== undefined ? formData.tenTBKT : (formData.vehicleName || '')) === 'string' ? (formData.tenTBKT !== undefined ? formData.tenTBKT : (formData.vehicleName || '')).normalize('NFC') : (formData.tenTBKT !== undefined ? formData.tenTBKT : (formData.vehicleName || ''))}
+                  onChange={(e) => setFormData({...formData, tenTBKT: e.target.value.normalize('NFC')})}
                   disabled={isLocked && !isAdmin}
                   className="border-b border-dotted border-black flex-1 bg-transparent outline-none pb-0 px-2 font-bold disabled:opacity-75 disabled:cursor-not-allowed" 
                 />
@@ -628,8 +632,8 @@ export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingForm
                 <span className="whitespace-nowrap">Số hiệu:</span>
                 <input 
                   type="text" 
-                  value={formData.soHieu !== undefined ? formData.soHieu : formData.vehicleNumber}
-                  onChange={(e) => setFormData({...formData, soHieu: e.target.value})}
+                  value={typeof (formData.soHieu !== undefined ? formData.soHieu : (formData.vehicleNumber || '')) === 'string' ? (formData.soHieu !== undefined ? formData.soHieu : (formData.vehicleNumber || '')).normalize('NFC') : (formData.soHieu !== undefined ? formData.soHieu : (formData.vehicleNumber || ''))}
+                  onChange={(e) => setFormData({...formData, soHieu: e.target.value.normalize('NFC')})}
                   disabled={isLocked && !isAdmin}
                   className="border-b border-dotted border-black flex-1 bg-transparent outline-none pb-0 px-2 font-bold disabled:opacity-75 disabled:cursor-not-allowed" 
                 />
@@ -638,8 +642,8 @@ export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingForm
                 <span className="whitespace-nowrap">Số XX:</span>
                 <input 
                   type="text" 
-                  value={formData.soXX !== undefined ? formData.soXX : formData.xxNumber1}
-                  onChange={(e) => setFormData({...formData, soXX: e.target.value})}
+                  value={typeof (formData.soXX !== undefined ? formData.soXX : (formData.xxNumber1 || '')) === 'string' ? (formData.soXX !== undefined ? formData.soXX : (formData.xxNumber1 || '')).normalize('NFC') : (formData.soXX !== undefined ? formData.soXX : (formData.xxNumber1 || ''))}
+                  onChange={(e) => setFormData({...formData, soXX: e.target.value.normalize('NFC')})}
                   disabled={isLocked && !isAdmin}
                   className="border-b border-dotted border-black flex-1 bg-transparent outline-none pb-0 px-2 font-bold disabled:opacity-75 disabled:cursor-not-allowed" 
                 />
@@ -651,8 +655,8 @@ export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingForm
                 <span className="whitespace-nowrap">Cụm - Công đoạn:</span>
                 <input 
                   type="text" 
-                  value={formData.cumCongDoan !== undefined ? formData.cumCongDoan : 'Tẩy rửa, làm sạch chi tiết'}
-                  onChange={(e) => setFormData({...formData, cumCongDoan: e.target.value})}
+                  value={typeof (formData.cumCongDoan !== undefined ? formData.cumCongDoan : 'Tẩy rửa, làm sạch chi tiết') === 'string' ? (formData.cumCongDoan !== undefined ? formData.cumCongDoan : 'Tẩy rửa, làm sạch chi tiết').normalize('NFC') : (formData.cumCongDoan !== undefined ? formData.cumCongDoan : 'Tẩy rửa, làm sạch chi tiết')}
+                  onChange={(e) => setFormData({...formData, cumCongDoan: e.target.value.normalize('NFC')})}
                   disabled={isLocked && !isAdmin}
                   className="border-b border-dotted border-black flex-1 bg-transparent outline-none pb-0 px-2 font-bold disabled:opacity-75 disabled:cursor-not-allowed" 
                 />
@@ -661,8 +665,8 @@ export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingForm
                 <span className="whitespace-nowrap">Tờ số:</span>
                 <input 
                   type="text" 
-                  value={formData.toSo !== undefined ? formData.toSo : (formData.sheetNumber || '1')}
-                  onChange={(e) => setFormData({...formData, toSo: e.target.value})}
+                  value={typeof (formData.toSo !== undefined ? formData.toSo : (formData.sheetNumber || '1')) === 'string' ? (formData.toSo !== undefined ? formData.toSo : (formData.sheetNumber || '1')).normalize('NFC') : (formData.toSo !== undefined ? formData.toSo : (formData.sheetNumber || '1'))}
+                  onChange={(e) => setFormData({...formData, toSo: e.target.value.normalize('NFC')})}
                   disabled={isLocked && !isAdmin}
                   className="border-b border-dotted border-black flex-1 bg-transparent outline-none pb-0 px-2 font-bold disabled:opacity-75 disabled:cursor-not-allowed" 
                 />
@@ -671,8 +675,8 @@ export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingForm
                 <span className="whitespace-nowrap">Số tờ:</span>
                 <input 
                   type="text" 
-                  value={formData.soTo !== undefined ? formData.soTo : '6'}
-                  onChange={(e) => setFormData({...formData, soTo: e.target.value})}
+                  value={typeof (formData.soTo !== undefined ? formData.soTo : '6') === 'string' ? (formData.soTo !== undefined ? formData.soTo : '6').normalize('NFC') : (formData.soTo !== undefined ? formData.soTo : '6')}
+                  onChange={(e) => setFormData({...formData, soTo: e.target.value.normalize('NFC')})}
                   disabled={isLocked && !isAdmin}
                   className="border-b border-dotted border-black flex-1 bg-transparent outline-none pb-0 px-2 font-bold disabled:opacity-75 disabled:cursor-not-allowed" 
                 />
@@ -691,7 +695,8 @@ export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingForm
                   <th className="border border-black px-2 py-2 text-center font-bold">Vật tư</th>
                   <th className="border border-black px-2 py-2 text-center font-bold" style={{width: '80px'}}>Giờ công</th>
                   <th className="border border-black px-2 py-2 text-center w-32 font-bold">Ghi chú</th>
-                </tr>
+                  <th className="border border-black px-2 py-2 text-center w-32 font-bold">Ngày thực hiện</th>
+                  </tr>
               </thead>
               <tbody>
                 {formData.items.length === 0 && (
@@ -727,10 +732,10 @@ export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingForm
                           <td className="border border-black p-0 relative">
                             <div className="flex flex-col h-full">
                               <AutoResizeTextarea 
-                                value={item.noiDung || ''}
+                                value={typeof (item.noiDung || '') === 'string' ? (item.noiDung || '').normalize('NFC') : (item.noiDung || '')}
                                 onChange={(e) => {
                                   const newItems = [...formData.items];
-                                  newItems[index].noiDung = e.target.value;
+                                  newItems[index].noiDung = e.target.value.normalize('NFC');
                                   setFormData({ ...formData, items: newItems });
                                 }}
                                 disabled={isLocked && !isAdmin}
@@ -740,10 +745,10 @@ export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingForm
                           </td>
                           <td className="border border-black p-0">
                             <AutoResizeTextarea 
-                              value={item.yeuCau || ''}
+                              value={typeof (item.yeuCau || '') === 'string' ? (item.yeuCau || '').normalize('NFC') : (item.yeuCau || '')}
                               onChange={(e) => {
                                 const newItems = [...formData.items];
-                                newItems[index].yeuCau = e.target.value;
+                                newItems[index].yeuCau = e.target.value.normalize('NFC');
                                 setFormData({ ...formData, items: newItems });
                               }}
                               disabled={isLocked && !isAdmin}
@@ -752,10 +757,10 @@ export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingForm
                           </td>
                           <td className="border border-black p-0">
                             <AutoResizeTextarea 
-                              value={item.thucTe || ''}
+                              value={typeof (item.thucTe || '') === 'string' ? (item.thucTe || '').normalize('NFC') : (item.thucTe || '')}
                               onChange={(e) => {
                                 const newItems = [...formData.items];
-                                newItems[index].thucTe = e.target.value;
+                                newItems[index].thucTe = e.target.value.normalize('NFC');
                                 setFormData({ ...formData, items: newItems });
                               }}
                               disabled={isLocked && !isAdmin}
@@ -764,10 +769,10 @@ export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingForm
                           </td>
                           <td className="border border-black p-0">
                             <AutoResizeTextarea 
-                              value={item.vatTu || ''}
+                              value={typeof (item.vatTu || '') === 'string' ? (item.vatTu || '').normalize('NFC') : (item.vatTu || '')}
                               onChange={(e) => {
                                 const newItems = [...formData.items];
-                                newItems[index].vatTu = e.target.value;
+                                newItems[index].vatTu = e.target.value.normalize('NFC');
                                 setFormData({ ...formData, items: newItems });
                               }}
                               disabled={isLocked && !isAdmin}
@@ -776,10 +781,10 @@ export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingForm
                           </td>
                           <td className="border border-black p-0">
                             <AutoResizeTextarea 
-                              value={item.gioCong || ''}
+                              value={typeof (item.gioCong || '') === 'string' ? (item.gioCong || '').normalize('NFC') : (item.gioCong || '')}
                               onChange={(e) => {
                                 const newItems = [...formData.items];
-                                newItems[index].gioCong = e.target.value;
+                                newItems[index].gioCong = e.target.value.normalize('NFC');
                                 setFormData({ ...formData, items: newItems });
                               }}
                               disabled={isLocked && !isAdmin}
@@ -788,17 +793,30 @@ export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingForm
                           </td>
                           <td className="border border-black p-0">
                             <AutoResizeTextarea 
-                              value={item.ghiChu || ''}
+                              value={typeof (item.ghiChu || '') === 'string' ? (item.ghiChu || '').normalize('NFC') : (item.ghiChu || '')}
                               onChange={(e) => {
                                 const newItems = [...formData.items];
-                                newItems[index].ghiChu = e.target.value;
+                                newItems[index].ghiChu = e.target.value.normalize('NFC');
                                 setFormData({ ...formData, items: newItems });
                               }}
                               disabled={isLocked && !isAdmin}
                               className="w-full h-full min-h-[36px] bg-transparent outline-none px-2 py-2 text-center font-bold text-emerald-700 print:text-black disabled:opacity-75"
                             />
                           </td>
-                        </tr>
+                            <td className="border border-black px-2 py-2">
+                              <input 
+                                type="date" 
+                                className="w-full bg-transparent outline-none text-center"
+                                value={typeof (item.ngayThucHien || '') === 'string' ? (item.ngayThucHien || '').normalize('NFC') : (item.ngayThucHien || '')}
+                                onChange={(e) => {
+                                  const newItems = [...formData.items];
+                                  newItems[index].ngayThucHien = e.target.value.normalize('NFC');
+                                  setFormData({ ...formData, items: newItems });
+                                }}
+                                disabled={isLocked && !isAdmin}
+                              />
+                            </td>
+                            </tr>
                       </React.Fragment>
                     );
                   });
@@ -824,8 +842,8 @@ export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingForm
           <div className="mb-4">
             <span className="font-bold text-[15px] mr-2">KẾT LUẬN:</span>
             <AutoResizeTextarea
-              value={formData.ketLuan !== undefined ? formData.ketLuan : (formData.conclusion || '')}
-              onChange={(e) => setFormData({...formData, ketLuan: e.target.value})}
+              value={typeof (formData.ketLuan !== undefined ? formData.ketLuan : (formData.conclusion || '')) === 'string' ? (formData.ketLuan !== undefined ? formData.ketLuan : (formData.conclusion || '')).normalize('NFC') : (formData.ketLuan !== undefined ? formData.ketLuan : (formData.conclusion || ''))}
+              onChange={(e) => setFormData({...formData, ketLuan: e.target.value.normalize('NFC')})}
               disabled={isLocked && !isAdmin}
               className="flex-1 w-full border-none p-0 outline-none text-[15px] leading-relaxed font-bold text-emerald-700 print:text-black bg-transparent min-h-[40px] disabled:opacity-75 disabled:cursor-not-allowed"
               placeholder="Nhập kết luận..."
@@ -835,8 +853,8 @@ export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingForm
           <div className="flex justify-end mb-4">
             <input 
               type="text" 
-              value={formData.ngayLap || ''}
-              onChange={(e) => setFormData({...formData, ngayLap: e.target.value})}
+              value={typeof (formData.ngayLap || '') === 'string' ? (formData.ngayLap || '').normalize('NFC') : (formData.ngayLap || '')}
+              onChange={(e) => setFormData({...formData, ngayLap: e.target.value.normalize('NFC')})}
               disabled={isLocked && !isAdmin}
               className="text-right italic font-bold text-emerald-700 print:text-black bg-transparent outline-none min-w-[250px] disabled:opacity-75 disabled:cursor-not-allowed" 
             />
@@ -848,14 +866,14 @@ export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingForm
               <input 
                 type="text" 
                 className="w-full text-center outline-none bg-transparent font-bold text-[15px] print:text-black" 
-                value={formData['sign_TỔ TRƯỞNG'] || ''} 
-                onChange={(e) => setFormData({...formData, 'sign_TỔ TRƯỞNG': e.target.value})}
+                value={typeof (formData['sign_TỔ TRƯỞNG'] || '') === 'string' ? (formData['sign_TỔ TRƯỞNG'] || '').normalize('NFC') : (formData['sign_TỔ TRƯỞNG'] || '')} 
+                onChange={(e) => setFormData({...formData, 'sign_TỔ TRƯỞNG': e.target.value.normalize('NFC')})}
                 placeholder="..."
               />
               <input 
                 type="text" 
-                value={formData.toTruong || ''}
-                onChange={(e) => setFormData({...formData, toTruong: e.target.value})}
+                value={typeof (formData.toTruong || '') === 'string' ? (formData.toTruong || '').normalize('NFC') : (formData.toTruong || '')}
+                onChange={(e) => setFormData({...formData, toTruong: e.target.value.normalize('NFC')})}
                 disabled={isLocked && !isAdmin}
                 className="text-center font-bold text-emerald-700 print:text-black bg-transparent outline-none w-full disabled:opacity-75 disabled:cursor-not-allowed" 
               />
@@ -865,14 +883,14 @@ export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingForm
               <input 
                 type="text" 
                 className="w-full text-center outline-none bg-transparent font-bold text-[15px] print:text-black" 
-                value={formData['sign_ĐẠI ĐỘI TRƯỞNG'] || ''} 
-                onChange={(e) => setFormData({...formData, 'sign_ĐẠI ĐỘI TRƯỞNG': e.target.value})}
+                value={typeof (formData['sign_ĐẠI ĐỘI TRƯỞNG'] || '') === 'string' ? (formData['sign_ĐẠI ĐỘI TRƯỞNG'] || '').normalize('NFC') : (formData['sign_ĐẠI ĐỘI TRƯỞNG'] || '')} 
+                onChange={(e) => setFormData({...formData, 'sign_ĐẠI ĐỘI TRƯỞNG': e.target.value.normalize('NFC')})}
                 placeholder="..."
               />
               <input 
                 type="text" 
-                value={formData.daiDoiTruong || ''}
-                onChange={(e) => setFormData({...formData, daiDoiTruong: e.target.value})}
+                value={typeof (formData.daiDoiTruong || '') === 'string' ? (formData.daiDoiTruong || '').normalize('NFC') : (formData.daiDoiTruong || '')}
+                onChange={(e) => setFormData({...formData, daiDoiTruong: e.target.value.normalize('NFC')})}
                 disabled={isLocked && !isAdmin}
                 className="text-center font-bold text-emerald-700 print:text-black bg-transparent outline-none w-full disabled:opacity-75 disabled:cursor-not-allowed" 
               />
@@ -882,14 +900,14 @@ export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingForm
               <input 
                 type="text" 
                 className="w-full text-center outline-none bg-transparent font-bold text-[15px] print:text-black" 
-                value={formData['sign_NHÂN VIÊN KCS'] || ''} 
-                onChange={(e) => setFormData({...formData, 'sign_NHÂN VIÊN KCS': e.target.value})}
+                value={typeof (formData['sign_NHÂN VIÊN KCS'] || '') === 'string' ? (formData['sign_NHÂN VIÊN KCS'] || '').normalize('NFC') : (formData['sign_NHÂN VIÊN KCS'] || '')} 
+                onChange={(e) => setFormData({...formData, 'sign_NHÂN VIÊN KCS': e.target.value.normalize('NFC')})}
                 placeholder="..."
               />
               <input 
                 type="text" 
-                value={formData.nhanVienKCS || ''}
-                onChange={(e) => setFormData({...formData, nhanVienKCS: e.target.value})}
+                value={typeof (formData.nhanVienKCS || '') === 'string' ? (formData.nhanVienKCS || '').normalize('NFC') : (formData.nhanVienKCS || '')}
+                onChange={(e) => setFormData({...formData, nhanVienKCS: e.target.value.normalize('NFC')})}
                 disabled={isLocked && !isAdmin}
                 className="text-center font-bold text-emerald-700 print:text-black bg-transparent outline-none w-full disabled:opacity-75 disabled:cursor-not-allowed" 
               />
@@ -899,25 +917,21 @@ export const PartsCleaningRepairForm: React.FC<Props> = ({ vehicle, existingForm
               <input 
                 type="text" 
                 className="w-full text-center outline-none bg-transparent font-bold text-[15px] print:text-black" 
-                value={formData['sign_CHỈ HUY TIỂU ĐOÀN'] || ''} 
-                onChange={(e) => setFormData({...formData, 'sign_CHỈ HUY TIỂU ĐOÀN': e.target.value})}
+                value={typeof (formData['sign_CHỈ HUY TIỂU ĐOÀN'] || '') === 'string' ? (formData['sign_CHỈ HUY TIỂU ĐOÀN'] || '').normalize('NFC') : (formData['sign_CHỈ HUY TIỂU ĐOÀN'] || '')} 
+                onChange={(e) => setFormData({...formData, 'sign_CHỈ HUY TIỂU ĐOÀN': e.target.value.normalize('NFC')})}
                 placeholder="..."
               />
               <input 
                 type="text" 
-                value={formData.chiHuyTieuDoan || ''}
-                onChange={(e) => setFormData({...formData, chiHuyTieuDoan: e.target.value})}
+                value={typeof (formData.chiHuyTieuDoan || '') === 'string' ? (formData.chiHuyTieuDoan || '').normalize('NFC') : (formData.chiHuyTieuDoan || '')}
+                onChange={(e) => setFormData({...formData, chiHuyTieuDoan: e.target.value.normalize('NFC')})}
                 disabled={isLocked && !isAdmin}
                 className="text-center font-bold text-emerald-700 print:text-black bg-transparent outline-none w-full disabled:opacity-75 disabled:cursor-not-allowed" 
               />
             </div>
           </div>
 
-          {formData.updatedAt && (
-            <div className="mt-12 text-center text-[12px] text-stone-400 italic print:hidden">
-              Cập nhật lần cuối: {formData.updatedAt} {formData.updatedBy && `bởi ${formData.updatedBy}`}
-            </div>
-          )}
+          
 </div>
       </div>
     </div>

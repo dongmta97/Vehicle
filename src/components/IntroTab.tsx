@@ -55,8 +55,7 @@ export function IntroTab({ currentUser, onNavigateToTab, onOpenCreateNew, onOpen
             <div className="bg-emerald-900/40 p-3 rounded-2xl text-center border border-emerald-800/40 flex flex-col justify-center shadow-inner hover:bg-emerald-900/60 transition-colors">
               <div className="text-stone-400 text-[10px] font-bold uppercase tracking-wider mb-1">Chức vụ</div>
               <div className="text-sm md:text-base font-black text-teal-300 uppercase">
-                {currentUser.role === 'dai_doi_truong' ? 'Đại đội trưởng' :
-                 currentUser.role === 'pho_dai_doi_truong' ? 'Phó Đại đội trưởng' :
+                {currentUser.role === 'pho_dai_doi_truong' ? 'Phó Đại đội trưởng' :
                  currentUser.role === 'trung_doi_truong' ? 'Trung đội trưởng' :
                  currentUser.role === 'to_truong' ? 'Tổ trưởng' :
                  currentUser.role === 'kcs' ? 'Nhân viên KCS' :

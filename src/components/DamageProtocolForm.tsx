@@ -1,4 +1,6 @@
+import { normalizeNFC } from '../utils/stringUtils';
 import React, { useState } from 'react';
+import { toIsoDateString } from '../utils/time';
 import { 
   Plus, 
   Trash2, 
@@ -26,18 +28,15 @@ export const DamageProtocolForm: React.FC<DamageProtocolFormProps> = ({
   initialProtocol = null
 }) => {
   // Form general state
-  const [reportNumber, setReportNumber] = useState(initialProtocol?.reportNumber || '03/BB-SCTH30');
-  const [createdDate, setCreatedDate] = useState(initialProtocol?.createdDate || new Date().toISOString().split('T')[0]);
-  const [place, setPlace] = useState(initialProtocol?.place || 'Xưởng Sửa chữa Tổng hợp, Tiểu đoàn SCTH30');
+  const [reportNumber, setReportNumber] = useState(initialProtocol?.reportNumber || '');
+  const [createdDate, setCreatedDate] = useState(toIsoDateString(initialProtocol?.createdDate) || new Date().toISOString().split('T')[0]);
+  const [place, setPlace] = useState(initialProtocol?.place || '');
   
   // Council and representatives
-  const [representativeGeneral, setRepresentativeGeneral] = useState(initialProtocol?.representativeGeneral || 'Trung tá Lê Hồng Nam - Tiểu đoàn trưởng');
-  const [representativeTechnical, setRepresentativeTechnical] = useState(initialProtocol?.representativeTechnical || 'Đại úy Đỗ Văn Minh - Trưởng ban Kỹ thuật');
-  const [technician, setTechnician] = useState(initialProtocol?.technician || 'Thượng úy Trần Quốc Tuấn - Trưởng tổ kỹ thuật');
-  const [driver, setDriver] = useState(
-    initialProtocol?.driver || 
-    (vehicle ? `Hạ sĩ Nguyễn Văn Hùng - Lái xe ${vehicle.brand}` : 'Hạ sĩ Nguyễn Văn Hùng - Lái xe')
-  );
+  const [representativeGeneral, setRepresentativeGeneral] = useState(initialProtocol?.representativeGeneral || '');
+  const [representativeTechnical, setRepresentativeTechnical] = useState(initialProtocol?.representativeTechnical || '');
+  const [technician, setTechnician] = useState(initialProtocol?.technician || '');
+  const [driver, setDriver] = useState(initialProtocol?.driver || '');
   
   // Vehicle Spec States
   const [plateNumber, setPlateNumber] = useState(initialProtocol?.plateNumber || vehicle?.plateNumber || '');
@@ -45,7 +44,7 @@ export const DamageProtocolForm: React.FC<DamageProtocolFormProps> = ({
   const [vehicleType, setVehicleType] = useState(initialProtocol?.vehicleType || vehicle?.vehicleType || '');
   const [chassisNumber, setChassisNumber] = useState(initialProtocol?.chassisNumber || vehicle?.chassisNumber || '');
   const [engineNumber, setEngineNumber] = useState(initialProtocol?.engineNumber || vehicle?.engineNumber || '');
-  const [odometer, setOdometer] = useState(initialProtocol?.odometer || '15,400 km');
+  const [odometer, setOdometer] = useState(initialProtocol?.odometer || '');
 
   // Dynamic Item List State
   const [items, setItems] = useState<DamageItem[]>(
@@ -249,7 +248,7 @@ export const DamageProtocolForm: React.FC<DamageProtocolFormProps> = ({
                 <div className="flex justify-center my-1.5">
                   <span className="border-t border-black w-36 block"></span>
                 </div>
-                <span className="italic block text-xs">Địa danh, ngày {createdDate.split('-')[2]} tháng {createdDate.split('-')[1]} năm {createdDate.split('-')[0]}</span>
+                <span className="italic block text-xs">Địa danh, ngày {(toIsoDateString(createdDate) || new Date().toISOString().split('T')[0]).split('-')[2] || '--'} tháng {(toIsoDateString(createdDate) || new Date().toISOString().split('T')[0]).split('-')[1] || '--'} năm {(toIsoDateString(createdDate) || new Date().toISOString().split('T')[0]).split('-')[0] || '----'}</span>
               </div>
             </div>
 
@@ -262,7 +261,7 @@ export const DamageProtocolForm: React.FC<DamageProtocolFormProps> = ({
             {/* Time and Representatives details */}
             <div className="space-y-2 mt-4 text-xs md:text-sm">
               <p>
-                Hôm nay, ngày {createdDate.split('-')[2]} tháng {createdDate.split('-')[1]} năm {createdDate.split('-')[0]}, tại địa điểm: <strong className="border-b border-black md:px-2">{place}</strong>
+                Hôm nay, ngày {(toIsoDateString(createdDate) || new Date().toISOString().split('T')[0]).split('-')[2] || '--'} tháng {(toIsoDateString(createdDate) || new Date().toISOString().split('T')[0]).split('-')[1] || '--'} năm {(toIsoDateString(createdDate) || new Date().toISOString().split('T')[0]).split('-')[0] || '----'}, tại địa điểm: <strong className="border-b border-black md:px-2">{place}</strong>
               </p>
               <p className="font-bold italic">Chúng tôi gồm Hội đồng Giám định kỹ thuật gồm có:</p>
               <ul className="list-none pl-4 space-y-1.5">

@@ -1,0 +1,10 @@
+          {/* Bottom Part - Notes */}
+          <div className="mt-6">
+            <span className="font-bold underline mb-2 block text-[15px]">Ghi chú:</span>
+            <textarea 
+              className="w-full h-32 border border-black p-2 focus:outline-none focus:ring-1 focus:ring-black text-[15px] resize-none"
+              placeholder="Nhập ghi chú tại đây..."
+              value={metadata.note}
+              onChange={(e) => setMetadata({ ...metadata, note: e.target.value })}
+            ></textarea>
+          </div>

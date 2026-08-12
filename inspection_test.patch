@@ -1,0 +1,33 @@
+--- src/components/InspectionTab.tsx
++++ src/components/InspectionTab.tsx
+@@ -93,7 +93,21 @@
+   });
+ 
+-  const filteredVehicleInspectionForms = allVehicleInspectionForms.filter(form => {
++  const [targetSessionId, setTargetSessionId] = useState<string | null>(null);
++
++  useEffect(() => {
++    const fetchSessions = async () => {
++      if (selectedVehicle) {
++        const sessions = await DataService.load('repairSessions') || [];
++        const vehicleSessions = sessions.filter((s: any) => s.vehicleId === selectedVehicle.vehicleId && !s.isDeleted);
++        const openSession = vehicleSessions.find((s: any) => s.status !== 'CLOSED' && s.workflowState !== 'HANDED_OVER' && !s.closedAt);
++        if (openSession) {
++          setTargetSessionId(openSession.id);
++        } else if (vehicleSessions.length > 0) {
++          vehicleSessions.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
++          setTargetSessionId(vehicleSessions[0].id);
++        } else {
++          setTargetSessionId(null);
++        }
++      } else {
++        setTargetSessionId(null);
++      }
++    };
++    fetchSessions();
++  }, [selectedVehicle]);
++
++  const filteredVehicleInspectionForms = allVehicleInspectionForms.filter(form => {
++    if (targetSessionId && form.repairSessionId !== targetSessionId) return false;
++
+     const q = searchQuery.toLowerCase().trim();

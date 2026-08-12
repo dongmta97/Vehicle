@@ -17,9 +17,10 @@ export const AutoResizeTextarea: React.FC<Props> = ({ value, className, ...props
   return (
     <textarea
       ref={ref}
-      value={value}
+      value={typeof (value) === 'string' ? (value).normalize('NFC') : (value)}
       className={`resize-none overflow-hidden ${className || ''}`}
       rows={1}
+      spellCheck={false}
       {...props}
     />
   );

@@ -26,7 +26,6 @@ interface TrashTabProps {
 const getRoleLabel = (role: string | undefined | null): string => {
   if (!role) return 'Không xác định';
   const roleMap: Record<string, string> = {
-    'dai_doi_truong': 'Đại đội trưởng',
     'pho_dai_doi_truong': 'Phó Đại đội trưởng',
     'trung_doi_truong': 'Trung đội trưởng',
     'to_truong': 'Tổ trưởng',
@@ -249,8 +248,8 @@ export const TrashTab = ({ onBack }: TrashTabProps) => {
          <input 
            type="text" 
            placeholder="Tìm theo người xóa..." 
-           value={searchDeletedBy}
-           onChange={(e) => setSearchDeletedBy(e.target.value)}
+           value={typeof (searchDeletedBy) === 'string' ? (searchDeletedBy).normalize('NFC') : (searchDeletedBy)}
+           onChange={(e) => setSearchDeletedBy(e.target.value.normalize('NFC'))}
            className="px-1 sm:px-4 py-2 rounded-xl border border-stone-200 focus:border-blue-500 focus:ring focus:ring-blue-200 transition-all outline-none text-sm w-64 bg-white"
          />
       </div>
