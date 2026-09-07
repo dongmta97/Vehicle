@@ -6,6 +6,7 @@ import { Vehicle } from '../types';
 import { getCurrentUserSession } from '../services/dbService';
 import { DataService } from '../firebase';
 import { AutoResizeTextarea } from './AutoResizeTextarea';
+import { formatVNDate } from '../utils/time';
 
 interface Props {
   targetSessionId?: string;
@@ -1132,7 +1133,10 @@ export const GeneralDisassemblyRepairForm: React.FC<Props> = ({ vehicle, existin
                   <th className="border border-black px-2 py-2 text-center font-bold">Vật tư</th>
                   <th className="border border-black px-2 py-2 text-center font-bold" style={{width: '80px'}}>Giờ công</th>
                   <th className="border border-black px-2 py-2 text-center w-32 font-bold">Ghi chú</th>
-                  <th className="border border-black px-2 py-2 text-center w-32 font-bold">Ngày thực hiện</th>
+                  <th className="border border-black px-2 py-2 text-center w-36 font-bold leading-tight">
+                    <div>Ngày thực hiện</div>
+                    <div>Ngày hoàn thành</div>
+                  </th>
                   </tr>
               </thead>
               <tbody>
@@ -1235,18 +1239,41 @@ export const GeneralDisassemblyRepairForm: React.FC<Props> = ({ vehicle, existin
                               className="w-full h-full min-h-[36px] bg-transparent outline-none px-2 py-2 text-center font-bold text-emerald-700 print:text-black disabled:opacity-75"
                             />
                           </td>
-                            <td className="border border-black px-2 py-2">
-                              <input 
-                                type="date" 
-                                className="w-full bg-transparent outline-none text-center"
-                                value={typeof (item.ngayThucHien || '') === 'string' ? (item.ngayThucHien || '').normalize('NFC') : (item.ngayThucHien || '')}
-                                onChange={(e) => {
-                                  const newItems = [...formData.items];
-                                  newItems[index].ngayThucHien = e.target.value.normalize('NFC');
-                                  setFormData({ ...formData, items: newItems });
-                                }}
-                                disabled={isLocked && !isAdmin}
-                              />
+                            <td className="border border-black px-1.5 py-1 text-center align-middle">
+                              <div className="flex flex-col items-center justify-center gap-1 text-xs">
+                                <div className="w-full">
+                                  <input 
+                                    type="date" 
+                                    className="w-full bg-transparent outline-none text-center text-xs print:hidden font-medium text-emerald-700 print:text-black"
+                                    value={typeof (item.ngayThucHien || '') === 'string' ? (item.ngayThucHien || '').normalize('NFC') : (item.ngayThucHien || '')}
+                                    onChange={(e) => {
+                                      const newItems = [...formData.items];
+                                      newItems[index].ngayThucHien = e.target.value.normalize('NFC');
+                                      setFormData({ ...formData, items: newItems });
+                                    }}
+                                    disabled={isLocked && !isAdmin}
+                                  />
+                                  <div className="hidden print:block text-center font-medium leading-tight">
+                                    {formatVNDate(item.ngayThucHien) || '—'}
+                                  </div>
+                                </div>
+                                <div className="w-full border-t border-stone-200 print:border-black/20 pt-1">
+                                  <input 
+                                    type="date" 
+                                    className="w-full bg-transparent outline-none text-center text-xs print:hidden font-medium text-emerald-700 print:text-black"
+                                    value={typeof (item.ngayHoanThanh || '') === 'string' ? (item.ngayHoanThanh || '').normalize('NFC') : (item.ngayHoanThanh || '')}
+                                    onChange={(e) => {
+                                      const newItems = [...formData.items];
+                                      newItems[index].ngayHoanThanh = e.target.value.normalize('NFC');
+                                      setFormData({ ...formData, items: newItems });
+                                    }}
+                                    disabled={isLocked && !isAdmin}
+                                  />
+                                  <div className="hidden print:block text-center font-medium leading-tight">
+                                    {formatVNDate(item.ngayHoanThanh) || '—'}
+                                  </div>
+                                </div>
+                              </div>
                             </td>
                             </tr>
                       </React.Fragment>

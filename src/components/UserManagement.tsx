@@ -236,6 +236,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onB
         return 'bg-amber-50 text-amber-800 border-amber-200';
       case 'tro_ly_ky_thuat':
         return 'bg-teal-50 text-teal-800 border-teal-200';
+      case 'quan_ly_cap_tren':
+        return 'bg-cyan-50 text-cyan-800 border-cyan-200';
       default:
         return 'bg-stone-50 text-stone-800 border-stone-200';
     }
@@ -253,6 +255,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onB
         return 'Nhân viên KCS';
       case 'tro_ly_ky_thuat':
         return 'Trợ lý Kỹ thuật';
+      case 'quan_ly_cap_tren':
+        return 'Quản lý cấp trên';
       case 'admin':
         return 'Quản trị hệ thống';
       default:
@@ -419,6 +423,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser, onB
                 <option value="to_truong">Tổ trưởng</option>
                 <option value="kcs">Nhân viên KCS</option>
                 <option value="tro_ly_ky_thuat">Trợ lý Kỹ thuật</option>
+                <option value="quan_ly_cap_tren">Quản lý cấp trên</option>
                 {role === 'admin' && <option value="admin">Quản trị hệ thống</option>}
               </select>
             </div>

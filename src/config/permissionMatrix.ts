@@ -93,5 +93,18 @@ export const permissionMatrix: Record<UserRole, Record<ModuleKey, PermissionLeve
     QUICK_LOOKUP: 'FULL',
     USER_MANAGEMENT: 'NONE',
     TRASH: 'NONE',
+  },
+  quan_ly_cap_tren: {
+    INTRO: 'VIEW',
+    RECEPTION: 'VIEW',
+    CAMPAIGN: 'VIEW',
+    INSPECTION: 'VIEW',
+    REPAIR: 'VIEW',
+    POST_REPAIR: 'VIEW',
+    HANDOVER: 'VIEW',
+    OPERATIONS: 'VIEW',
+    QUICK_LOOKUP: 'VIEW',
+    USER_MANAGEMENT: 'NONE',
+    TRASH: 'NONE',
   }
 };

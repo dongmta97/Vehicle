@@ -25,6 +25,7 @@ import { formatVNTime, parseDate } from '../utils/time';
 import { canEditModule } from '../services/permissionService';
 import { canEditDocument } from '../services/ownershipService';
 import { dbService, getCurrentUserSession, normalizePlate } from '../services/dbService';
+import { resolveCampaignName, resolveSessionYear } from '../services/repairCampaignService';
 
 interface InspectionTabProps {
   viewMode: string;
@@ -151,7 +152,6 @@ export function InspectionTab({
   const [protocolListTab, setProtocolListTab] = useState<'GIAO_NHAN' | 'KIEM_CHON'>('GIAO_NHAN');
   const [activeDetailedVehicle, setActiveDetailedVehicle] = useState<Vehicle | null>(currentVehicleOrFallback);
   const [activeDetailedFormId, setActiveDetailedFormId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
 
   // Tree View data & state
   const [repairCampaigns, setRepairCampaigns] = useState<RepairCampaign[]>([]);
@@ -228,12 +228,8 @@ export function InspectionTab({
     filteredSessionsForTree.forEach((s) => {
       if (s.isDeleted) return;
 
-      const year = (s.openedAt ? parseDate(s.openedAt)?.getFullYear().toString() : null) || 
-        (s.createdAt ? parseDate(s.createdAt)?.getFullYear().toString() : null) || 
-        '2026';
-
-      const matchedCampaign = repairCampaigns.find((c) => c.id === s.campaignId && !c.isDeleted);
-      const campaign = s.campaignName || matchedCampaign?.campaignName || 'Chưa xác định đợt sửa chữa';
+      const year = resolveSessionYear(s, repairCampaigns);
+      const campaign = s.campaignName || resolveCampaignName(s.campaignId, repairCampaigns, (s as any).campaignName) || 'Không thuộc đợt';
 
       const matchedVeh = (savedVehicles || []).find(
         (v) =>
@@ -373,20 +369,14 @@ export function InspectionTab({
     setActiveFormMode('NONE');
   };
 
-  // Search & Filter derived state for right-side saved protocols
+  // Filter derived state for right-side saved protocols
   const filteredDamageProtocols = allDamageProtocols.filter(p => {
     if (targetSessionId) {
       if (p.repairSessionId !== targetSessionId) return false;
     } else if (selectedVehicle) {
       if (p.vehicleId !== selectedVehicle.vehicleId && p.plateNumber !== selectedVehicle.plateNumber) return false;
     }
-
-    const q = searchQuery.toLowerCase().trim();
-    if (!q) return true;
-    const pPlate = (p.plateNumber || '').toLowerCase();
-    const pBrand = (p.brand || '').toLowerCase();
-    const pReportNumber = (p.reportNumber || '').toLowerCase();
-    return pPlate.includes(q) || pBrand.includes(q) || pReportNumber.includes(q);
+    return true;
   }).sort((a: any, b: any) => {
     const dateA = new Date(a.updatedAt || a.createdDate || a.createdAt || 0).getTime();
     const dateB = new Date(b.updatedAt || b.createdDate || b.createdAt || 0).getTime();
@@ -399,13 +389,7 @@ export function InspectionTab({
     } else if (selectedVehicle) {
       if (form.vehicleId !== selectedVehicle.vehicleId) return false;
     }
-    
-    const q = searchQuery.toLowerCase().trim();
-    if (!q) return true;
-    const vehicleInfo = savedVehicles.find(v => v.vehicleId === form.vehicleId);
-    const displayPlateNumber = (form.plateNumber || vehicleInfo?.plateNumber || '').toLowerCase();
-    const vehicleName = (form.vehicleName || '').toLowerCase();
-    return displayPlateNumber.includes(q) || vehicleName.includes(q);
+    return true;
   }).sort((a: any, b: any) => {
     const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
     const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
@@ -641,17 +625,30 @@ export function InspectionTab({
               Object.keys(treeData).sort((a, b) => b.localeCompare(a)).map((year) => {
                 const isYearExpanded = isSearching || Boolean(expandedYears[year]);
                 const campaignsObj = treeData[year];
+                let yearCount = 0;
+                Object.values(campaignsObj).forEach((vehObj: any) => {
+                  Object.values(vehObj).forEach((plateObj: any) => {
+                    Object.values(plateObj).forEach((sessions: any) => {
+                      yearCount += sessions.length;
+                    });
+                  });
+                });
 
                 return (
                   <div key={year} className="mb-1">
                     {/* Cấp 1: Năm */}
                     <div 
-                      className="flex items-center gap-1.5 cursor-pointer py-1.5 px-2 hover:bg-stone-100 rounded-lg text-stone-800 font-bold transition-colors"
+                      className="flex items-center justify-between cursor-pointer py-1.5 px-2 hover:bg-stone-100 rounded-lg transition-colors group"
                       onClick={() => toggleYear(year)}
                     >
-                      {isYearExpanded ? <ChevronDown className="w-4 h-4 text-emerald-700 shrink-0" /> : <ChevronRight className="w-4 h-4 text-stone-400 shrink-0" />}
-                      <Calendar className="w-4 h-4 text-emerald-700 shrink-0" />
-                      <span>{year}</span>
+                      <div className="flex items-center gap-1.5 text-stone-800 font-bold">
+                        {isYearExpanded ? <ChevronDown className="w-4 h-4 text-emerald-700 shrink-0" /> : <ChevronRight className="w-4 h-4 text-stone-400 shrink-0" />}
+                        <Folder className="w-4 h-4 text-amber-500 shrink-0" />
+                        <span>{year}</span>
+                      </div>
+                      <span className="text-[10px] text-stone-500 font-medium px-1.5 py-0.5 bg-stone-100 group-hover:bg-stone-200 rounded-md transition-colors whitespace-nowrap">
+                        {String(yearCount).padStart(2, '0')} hồ sơ
+                      </span>
                     </div>
 
                     {isYearExpanded && (
@@ -660,17 +657,28 @@ export function InspectionTab({
                           const campaignKey = `${year}-${campaign}`;
                           const isCampaignExpanded = isSearching || Boolean(expandedCampaigns[campaignKey]);
                           const vehiclesObj = campaignsObj[campaign];
+                          let campaignCount = 0;
+                          Object.values(vehiclesObj).forEach((plateObj: any) => {
+                            Object.values(plateObj).forEach((sessions: any) => {
+                              campaignCount += sessions.length;
+                            });
+                          });
 
                           return (
                             <div key={campaign}>
                               {/* Cấp 2: Đợt sửa chữa */}
                               <div 
-                                className="flex items-center gap-1.5 cursor-pointer py-1 px-2 hover:bg-stone-100 rounded-lg text-stone-700 font-semibold text-xs transition-colors"
+                                className="flex items-center justify-between cursor-pointer py-1 px-2 hover:bg-stone-100 rounded-lg transition-colors group"
                                 onClick={() => toggleCampaign(year, campaign)}
                               >
-                                {isCampaignExpanded ? <ChevronDown className="w-3.5 h-3.5 text-emerald-700 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />}
-                                <Folder className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                                <span className="truncate">{campaign}</span>
+                                <div className="flex items-center gap-1.5 text-stone-700 font-semibold text-xs min-w-0 pr-2">
+                                  {isCampaignExpanded ? <ChevronDown className="w-3.5 h-3.5 text-emerald-700 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />}
+                                  <Folder className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                  <span className="truncate">{campaign}</span>
+                                </div>
+                                <span className="text-[10px] text-stone-500 font-medium px-1.5 py-0.5 bg-stone-100 group-hover:bg-stone-200 rounded-md transition-colors shrink-0 whitespace-nowrap">
+                                  {String(campaignCount).padStart(2, '0')} hồ sơ
+                                </span>
                               </div>
 
                               {isCampaignExpanded && (
@@ -915,20 +923,6 @@ export function InspectionTab({
             ) : (
               <div className="flex-1 flex flex-col p-2">
 
-                {/* Search Bar */}
-                <div className="mb-4 relative max-w-md">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Search className="h-4 w-4 text-stone-400" />
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Tìm theo số đăng ký xe, tên xe hoặc số biên bản..."
-                    value={typeof (searchQuery) === 'string' ? (searchQuery).normalize('NFC') : (searchQuery)}
-                    onChange={(e) => setSearchQuery(e.target.value.normalize('NFC'))}
-                    className="block w-full pl-10 pr-3 py-2 border border-stone-200 rounded-lg text-sm bg-stone-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium placeholder:font-normal text-stone-800"
-                  />
-                </div>
-
                 {/* Subtabs */}
                 <div className="flex flex-wrap sm:flex-nowrap gap-2 mb-6 border-b border-stone-200 pb-3">
                   <button
@@ -988,12 +982,7 @@ export function InspectionTab({
                         <FileText className="h-8 w-8" />
                       </div>
                       
-                      {searchQuery ? (
-                        <>
-                          <h3 className="text-sm font-bold text-stone-800 mb-1">Không tìm thấy biên bản phù hợp</h3>
-                          <p className="text-xs text-stone-500 mb-6">Đã tìm kiếm với từ khóa "{searchQuery}".</p>
-                        </>
-                      ) : selectedSession ? (
+                      {selectedSession ? (
                         <>
                           <h3 className="text-sm font-bold text-stone-800 mb-1">
                             Chưa có biên bản giao nhận cho {selectedSession.plateNumber || 'xe này'} (Lần {selectedSession.repairNumber || 1})
@@ -1114,12 +1103,7 @@ export function InspectionTab({
                         <FileText className="h-8 w-8" />
                       </div>
 
-                      {searchQuery ? (
-                        <>
-                          <h3 className="text-sm font-bold text-stone-800 mb-1">Không tìm thấy kết quả phù hợp</h3>
-                          <p className="text-xs text-stone-500 mb-6">Đã tìm kiếm với từ khóa "{searchQuery}".</p>
-                        </>
-                      ) : selectedSession ? (
+                      {selectedSession ? (
                         <>
                           <h3 className="text-sm font-bold text-stone-800 mb-1">
                             Chưa có biên bản kiểm chọn cho {selectedSession.plateNumber || 'xe này'} (Lần {selectedSession.repairNumber || 1})

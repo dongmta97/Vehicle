@@ -83,3 +83,83 @@ export function resolveCampaignName(
   return '';
 }
 
+/**
+ * Helper xác định năm nghiệp vụ của RepairSession dựa trên RepairCampaign mà session thuộc về.
+ * 
+ * Thứ tự ưu tiên:
+ * 1. Tìm RepairCampaign (theo session.campaignId hoặc session.campaignName). Nếu có campaign.year -> String(campaign.year)
+ * 2. session.campaignYear hoặc session.year
+ * 3. Trích xuất năm 4 chữ số từ session.campaignName (regex /\b(19|20)\d{2}\b/)
+ * 4. Suy ra năm từ session.openedAt hoặc session.createdAt
+ * 5. Fallback: "Không rõ năm" (tuyệt đối KHÔNG mặc định là "2026")
+ */
+export function resolveSessionYear(
+  session: any,
+  campaigns?: RepairCampaign[] | null
+): string {
+  if (!session) return "Không rõ năm";
+
+  // ƯU TIÊN 1: Tìm RepairCampaign tương ứng
+  if (campaigns && campaigns.length > 0) {
+    let found = session.campaignId
+      ? campaigns.find(c => c.id === session.campaignId && !c.isDeleted)
+      : undefined;
+    
+    if (!found && session.campaignName) {
+      found = campaigns.find(c => c.campaignName === session.campaignName && !c.isDeleted);
+    }
+
+    if (found && found.year && Number(found.year) > 0) {
+      return String(found.year);
+    }
+  }
+
+  // ƯU TIÊN 2: session.campaignYear hoặc session.year
+  if (session.campaignYear && Number(session.campaignYear) > 0) {
+    return String(session.campaignYear);
+  }
+  if (session.year && Number(session.year) > 0) {
+    return String(session.year);
+  }
+
+  // ƯU TIÊN 3: Trích xuất năm 4 chữ số từ session.campaignName
+  if (session.campaignName && typeof session.campaignName === 'string') {
+    const match = session.campaignName.match(/\b(19|20)\d{2}\b/);
+    if (match) {
+      return match[0];
+    }
+  }
+
+  // ƯU TIÊN 4: session.openedAt hoặc session.createdAt
+  const openedYear = extractYearFromDateString(session.openedAt);
+  if (openedYear) return openedYear;
+
+  const createdYear = extractYearFromDateString(session.createdAt);
+  if (createdYear) return createdYear;
+
+  // ƯU TIÊN 5: Fallback "Không rõ năm"
+  return "Không rõ năm";
+}
+
+function extractYearFromDateString(dateVal?: any): string | null {
+  if (!dateVal) return null;
+  try {
+    let d: Date | null = null;
+    if (typeof dateVal === 'string') {
+      d = new Date(dateVal);
+    } else if (typeof dateVal === 'number') {
+      d = new Date(dateVal);
+    } else if (dateVal && typeof dateVal.toDate === 'function') {
+      d = dateVal.toDate();
+    }
+    if (d && !isNaN(d.getTime())) {
+      const y = d.getFullYear();
+      if (y >= 1900 && y <= 2100) return String(y);
+    }
+  } catch (e) {
+    // ignore parse error
+  }
+  return null;
+}
+
+

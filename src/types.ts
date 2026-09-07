@@ -2,7 +2,7 @@
  * Shared Type Definitions for repair vehicles and histories
  */
 
-export type UserRole = 'admin' | 'pho_dai_doi_truong' | 'trung_doi_truong' | 'to_truong' | 'kcs' | 'tro_ly_ky_thuat';
+export type UserRole = 'admin' | 'pho_dai_doi_truong' | 'trung_doi_truong' | 'to_truong' | 'kcs' | 'tro_ly_ky_thuat' | 'quan_ly_cap_tren';
 
 export interface User {
   uid: string;
@@ -268,5 +268,16 @@ export interface RepairCampaign {
   createdBy: string;
   isDeleted: boolean;
 }
+
+export interface TaskItem {
+  id: number | string;
+  date: string;
+  content: string;
+  assignedTo: string;
+  performer?: string;
+}
+
+export type TaskPlanItem = TaskItem;
+export type TaskReportItem = TaskItem;
 
 

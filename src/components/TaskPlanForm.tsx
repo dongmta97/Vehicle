@@ -6,10 +6,11 @@ import { DataService } from '../firebase';
 import { AutoResizeTextarea } from './AutoResizeTextarea';
 import { userService } from '../services/userService';
 import { canEditModule } from '../services/permissionService';
+import { TaskPlanItem } from '../types';
 
 // Default struct for TaskPlan
-const DEFAULT_TASKS = [
-  { id: 1, date: '', content: '', assignedTo: '' }
+const DEFAULT_TASKS: TaskPlanItem[] = [
+  { id: 1, date: '', content: '', assignedTo: '', performer: '' }
 ];
 
 interface Props {
@@ -141,9 +142,9 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, targetSessionId,
         stageName: 'Kế hoạch nhiệm vụ',
         formData: normalizeNFC(formData),
         isDeleted: false,
-        createdBy: docExists && existingDoc?.createdBy ? existingDoc.createdBy : (currentUser?.uid || currentUser?.username || 'unknown'),
-        createdByName: docExists && existingDoc?.createdByName ? existingDoc.createdByName : (currentUser?.fullName || 'unknown'),
-        createdAt: docExists && existingDoc?.createdAt ? existingDoc.createdAt : new Date().toISOString(),
+        createdBy: (docExists && existingDoc?.createdBy) || initialData?.createdBy || (currentUser?.uid || currentUser?.username || 'unknown'),
+        createdByName: (docExists && existingDoc?.createdByName) || initialData?.createdByName || (currentUser?.fullName || 'unknown'),
+        createdAt: (docExists && existingDoc?.createdAt) || initialData?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
 
@@ -267,7 +268,7 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, targetSessionId,
     }
 
     const newTasks = [...formData.tasks];
-    newTasks.push({ id: Date.now(), date: '', content: '', assignedTo: '' });
+    newTasks.push({ id: Date.now(), date: '', content: '', assignedTo: '', performer: '' });
     setFormData({ ...formData, tasks: newTasks });
   };
 
@@ -431,9 +432,10 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, targetSessionId,
             <table className="w-full border-collapse border border-black text-[15px]">
               <thead>
                 <tr>
-                  <th className="border border-black px-2 py-2 text-center w-32 font-bold">Thứ ngày</th>
+                  <th className="border border-black px-2 py-2 text-center w-28 font-bold">Thứ ngày</th>
                   <th className="border border-black px-2 py-2 text-center font-bold">Nội dung công việc</th>
-                  <th className="border border-black px-2 py-2 text-center w-48 font-bold">Phụ trách thực hiện</th>
+                  <th className="border border-black px-2 py-2 text-center w-40 font-bold">Cán bộ phụ trách</th>
+                  <th className="border border-black px-2 py-2 text-center w-40 font-bold">Nhân viên thực hiện</th>
                   <th className="border-0 w-8 print:hidden"></th>
                 </tr>
               </thead>
@@ -456,17 +458,25 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, targetSessionId,
                           placeholder="Nhập nội dung..."
                         />
                       </td>
+                      
+                      {/* Cán bộ phụ trách (assignedTo) */}
                       <td className="border border-black p-0 align-top relative">
                         <div 
                            className="w-full h-full min-h-[48px] px-2 py-2 flex items-start text-emerald-800 print:text-black cursor-pointer font-bold relative"
                            onClick={(e) => { e.stopPropagation(); setActiveSelectIndex(index); }}
                         >
-                          <span className="flex-1 whitespace-pre-wrap">{item.assignedTo || 'Chọn người pt...'}</span>
+                          <span className="flex-1 whitespace-pre-wrap">
+                            {item.assignedTo ? (
+                              item.assignedTo
+                            ) : (
+                              <span className="print:hidden text-stone-400 font-normal text-xs">Chọn cán bộ...</span>
+                            )}
+                          </span>
                         </div>
                         {activeSelectIndex === index && (
                           <div className="absolute top-10 left-0 w-full min-w-[200px] bg-white border border-stone-200 shadow-xl rounded-lg z-50 print:hidden mt-2 font-sans overflow-hidden">
                              <div className="sticky top-0 bg-stone-100 flex justify-between items-center px-3 py-2 border-b border-stone-200">
-                                <span className="text-xs font-bold uppercase text-stone-600">Chọn cán bộ</span>
+                                <span className="text-xs font-bold uppercase text-stone-600">Chọn cán bộ phụ trách</span>
                                 <button className="text-stone-400 hover:text-stone-800" onClick={(e) => { e.stopPropagation(); setActiveSelectIndex(null); }}><X className="w-4 h-4" /></button>
                              </div>
                              <div className="max-h-60 overflow-y-auto">
@@ -478,7 +488,7 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, targetSessionId,
                                       onClick={(e) => {
                                          e.stopPropagation();
                                          handleTaskChange(index, 'assignedTo', u.fullName);
-                                        setActiveSelectIndex(null);
+                                         setActiveSelectIndex(null);
                                       }}
                                     >
                                       <div className="font-bold text-sm text-stone-800">{u.fullName}</div>
@@ -502,6 +512,17 @@ export const TaskPlanForm: React.FC<Props> = ({ existingFormId, targetSessionId,
                           </div>
                         )}
                       </td>
+
+                      {/* Nhân viên thực hiện (performer) - Nhập văn bản trực tiếp */}
+                      <td className="border border-black p-0 align-top">
+                        <AutoResizeTextarea 
+                          value={typeof (item.performer || '') === 'string' ? (item.performer || '').normalize('NFC') : (item.performer || '')}
+                          onChange={(e) => handleTaskChange(index, 'performer', e.target.value.normalize('NFC'))}
+                          className="w-full h-full min-h-[48px] bg-transparent outline-none px-2 py-2 text-emerald-800 print:text-black font-medium"
+                          placeholder="Nhập tên nhân viên..."
+                        />
+                      </td>
+
                       <td className="border-0 px-2 py-2 print:hidden align-top text-center w-10">
                         <button
                           onClick={() => removeTaskRow(index)}

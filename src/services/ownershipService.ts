@@ -69,6 +69,10 @@ export const canEditDocument = (
     return true;
   }
 
+  if (currentUser.role === 'quan_ly_cap_tren') {
+    return false;
+  }
+
   const key = moduleKey || inferModuleKey(document);
 
   if (key) {

@@ -60,6 +60,7 @@ export function IntroTab({ currentUser, onNavigateToTab, onOpenCreateNew, onOpen
                  currentUser.role === 'to_truong' ? 'Tổ trưởng' :
                  currentUser.role === 'kcs' ? 'Nhân viên KCS' :
                  currentUser.role === 'tro_ly_ky_thuat' ? 'Trợ lý Kỹ thuật' :
+                 currentUser.role === 'quan_ly_cap_tren' ? 'Quản lý cấp trên' :
                  currentUser.role === 'admin' ? 'Quản trị hệ thống' : 'Chưa rõ chức vụ'}
               </div>
             </div>

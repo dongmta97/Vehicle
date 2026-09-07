@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { PlusCircle, FileText, Printer, Trash2, Search, RefreshCw, Folder, ChevronRight, ChevronDown, Maximize2, Minimize2, Save, Truck } from 'lucide-react';
-import { Vehicle, RepairSession } from '../types';
+import { Vehicle, RepairSession, RepairCampaign } from '../types';
 import { DataService } from '../firebase';
 import { dbService, getCurrentUserSession, getCreatorAuditParams, getUpdaterAuditParams } from '../services/dbService';
+import { resolveCampaignName, resolveSessionYear } from '../services/repairCampaignService';
 import { canEditModule } from '../services/permissionService';
 import { canEditDocument, canDeleteDocument } from '../services/ownershipService';
 import { formatVNTime, parseDate } from '../utils/time';
@@ -41,10 +42,10 @@ export function PostRepairRecordsTab({
   const [listTab, setListTab] = useState<'INSPECTION' | 'HANDOVER'>('INSPECTION');
   const [activeDetailedVehicle, setActiveDetailedVehicle] = useState<Vehicle | null>(selectedVehicle);
   const [activeDetailedFormId, setActiveDetailedFormId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
   const [treeSearchQuery, setTreeSearchQuery] = useState('');
   const [allForms, setAllForms] = useState<any[]>([]);
   const [repairSessions, setRepairSessions] = useState<any[]>([]);
+  const [repairCampaigns, setRepairCampaigns] = useState<RepairCampaign[]>([]);
   const [selectedFormForView, setSelectedFormForView] = useState<any>(null);
   const [handoverVehiclesList, setHandoverVehiclesList] = useState<any[]>([]);
   const [selectedInspectionForm, setSelectedInspectionForm] = useState<any | null>(null);
@@ -195,10 +196,23 @@ export function PostRepairRecordsTab({
     }
   };
 
+  const loadRepairCampaigns = async () => {
+    try {
+      const campaigns = (await DataService.load('repairCampaigns')) || [];
+      if (Array.isArray(campaigns)) {
+        const active = campaigns.filter((c: any) => !c.isDeleted && c.isDeleted !== 'true');
+        setRepairCampaigns(active);
+      }
+    } catch (e) {
+      console.warn("Failed to load repairCampaigns:", e);
+    }
+  };
+
   useEffect(() => {
     loadForms();
     loadHandoverVehicles();
     loadRepairSessions();
+    loadRepairCampaigns();
   }, []);
 
   // Tree computation
@@ -220,11 +234,8 @@ export function PostRepairRecordsTab({
     filteredSessionsForTree.forEach(session => {
       if (session.isDeleted === true || session.isDeleted === 'true') return;
       
-      const year = (session.openedAt ? parseDate(session.openedAt)?.getFullYear().toString() : null) || 
-        (session.createdAt ? parseDate(session.createdAt)?.getFullYear().toString() : null) || 
-        "2026";
-        
-      const campaign = session.campaignName || "Không thuộc đợt";
+      const year = resolveSessionYear(session, repairCampaigns);
+      const campaign = session.campaignName || resolveCampaignName(session.campaignId, repairCampaigns, (session as any).campaignName) || "Không thuộc đợt";
       const vehicleName = session.vehicleName || "Xe không xác định";
       const plate = session.plateNumber || "Không rõ biển số";
       
@@ -235,8 +246,19 @@ export function PostRepairRecordsTab({
       
       tree[year][campaign][vehicleName][plate].push(session);
     });
+
+    Object.keys(tree).forEach((y) => {
+      Object.keys(tree[y]).forEach((c) => {
+        Object.keys(tree[y][c]).forEach((v) => {
+          Object.keys(tree[y][c][v]).forEach((p) => {
+            tree[y][c][v][p].sort((a, b) => (a.repairNumber || 1) - (b.repairNumber || 1));
+          });
+        });
+      });
+    });
+
     return tree;
-  }, [filteredSessionsForTree]);
+  }, [filteredSessionsForTree, repairCampaigns]);
 
   const toggleYear = (y: string) => setExpandedYears(prev => ({ ...prev, [y]: !prev[y] }));
   const toggleCampaign = (y: string, c: string) => setExpandedCampaigns(prev => ({ ...prev, [`${y}-${c}`]: !prev[`${y}-${c}`] }));
@@ -395,17 +417,8 @@ export function PostRepairRecordsTab({
 
   const filteredForms = useMemo(() => {
     if (!targetSessionId) return [];
-    return allForms.filter(form => {
-      if (form.repairSessionId !== targetSessionId) return false;
-
-      const q = searchQuery.toLowerCase().trim();
-      if (!q) return true;
-      const plate = (form.plateNumber || '').toLowerCase();
-      const name = (form.vehicleName || '').toLowerCase();
-      const repNo = (form.reportNo || '').toLowerCase();
-      return plate.includes(q) || name.includes(q) || repNo.includes(q);
-    });
-  }, [allForms, targetSessionId, searchQuery]);
+    return allForms.filter(form => form.repairSessionId === targetSessionId);
+  }, [allForms, targetSessionId]);
 
   const inspectionFormsList = filteredForms.filter(f => f.templateType === 'POST_REPAIR_INSPECTION');
   const handoverFormsList = filteredForms.filter(f => f.templateType === 'POST_REPAIR_HANDOVER');
@@ -470,17 +483,30 @@ export function PostRepairRecordsTab({
             return sortedYears.map(year => {
               const campaignsObj = treeData[year];
               const isYearExpanded = isSearching || Boolean(expandedYears[year]);
+              let yearCount = 0;
+              Object.values(campaignsObj).forEach((vehObj: any) => {
+                Object.values(vehObj).forEach((plateObj: any) => {
+                  Object.values(plateObj).forEach((sessions: any) => {
+                    yearCount += sessions.length;
+                  });
+                });
+              });
 
               return (
                 <div key={year} className="mb-1">
                   {/* Level 1: Year */}
                   <div 
-                    className="flex items-center gap-1.5 cursor-pointer py-1.5 px-2 hover:bg-stone-100 rounded-lg text-stone-800 font-bold select-none transition-colors"
+                    className="flex items-center justify-between cursor-pointer py-1.5 px-2 hover:bg-stone-100 rounded-lg transition-colors group"
                     onClick={() => toggleYear(year)}
                   >
-                    {isYearExpanded ? <ChevronDown className="w-4 h-4 text-emerald-700" /> : <ChevronRight className="w-4 h-4 text-stone-400" />}
-                    <Folder className="w-4 h-4 text-amber-500 shrink-0" />
-                    <span>{year}</span>
+                    <div className="flex items-center gap-1.5 text-stone-800 font-bold">
+                      {isYearExpanded ? <ChevronDown className="w-4 h-4 text-emerald-700 shrink-0" /> : <ChevronRight className="w-4 h-4 text-stone-400 shrink-0" />}
+                      <Folder className="w-4 h-4 text-amber-500 shrink-0" />
+                      <span>{year}</span>
+                    </div>
+                    <span className="text-[10px] text-stone-500 font-medium px-1.5 py-0.5 bg-stone-100 group-hover:bg-stone-200 rounded-md transition-colors whitespace-nowrap">
+                      {String(yearCount).padStart(2, '0')} hồ sơ
+                    </span>
                   </div>
                   
                   {isYearExpanded && (
@@ -489,17 +515,28 @@ export function PostRepairRecordsTab({
                         const vehiclesObj = campaignsObj[campaign];
                         const campaignKey = `${year}-${campaign}`;
                         const isCampaignExpanded = isSearching || Boolean(expandedCampaigns[campaignKey]);
+                        let campaignCount = 0;
+                        Object.values(vehiclesObj).forEach((plateObj: any) => {
+                          Object.values(plateObj).forEach((sessions: any) => {
+                            campaignCount += sessions.length;
+                          });
+                        });
 
                         return (
                           <div key={campaign}>
                             {/* Level 2: Repair Campaign */}
                             <div 
-                              className="flex items-center gap-1.5 cursor-pointer py-1 px-2 hover:bg-stone-100 rounded-lg text-stone-700 font-semibold text-xs select-none transition-colors"
+                              className="flex items-center justify-between cursor-pointer py-1 px-2 hover:bg-stone-100 rounded-lg transition-colors group"
                               onClick={() => toggleCampaign(year, campaign)}
                             >
-                              {isCampaignExpanded ? <ChevronDown className="w-3.5 h-3.5 text-emerald-700" /> : <ChevronRight className="w-3.5 h-3.5 text-stone-400" />}
-                              <Folder className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                              <span className="truncate">{campaign}</span>
+                              <div className="flex items-center gap-1.5 text-stone-700 font-semibold text-xs min-w-0 pr-2">
+                                {isCampaignExpanded ? <ChevronDown className="w-3.5 h-3.5 text-emerald-700 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />}
+                                <Folder className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                <span className="truncate">{campaign}</span>
+                              </div>
+                              <span className="text-[10px] text-stone-500 font-medium px-1.5 py-0.5 bg-stone-100 group-hover:bg-stone-200 rounded-md transition-colors shrink-0 whitespace-nowrap">
+                                {String(campaignCount).padStart(2, '0')} hồ sơ
+                              </span>
                             </div>
                             
                             {isCampaignExpanded && (
@@ -541,17 +578,20 @@ export function PostRepairRecordsTab({
                                                 
                                                 {isPlateExpanded && (
                                                   <div className="pl-3 py-1 space-y-1">
-                                                    {sessionsList.map((session: any) => {
+                                                    {sessionsList.map((session: any, idx: number) => {
                                                       const isSelected = selectedRepairSession?.id === session.id;
+                                                      const sessionNumberStr = `Lần sửa chữa ${String(session.repairNumber || idx + 1).padStart(2, '0')}`;
                                                       return (
                                                         /* Level 5: Repair Session */
                                                         <div 
                                                           key={session.id}
-                                                          className={`flex items-center gap-2 py-1.5 px-2.5 rounded-lg cursor-pointer transition-all text-xs ${isSelected ? 'bg-emerald-100 text-emerald-900 font-bold border border-emerald-300 shadow-sm' : 'hover:bg-stone-100 text-stone-600 font-medium'}`}
+                                                          className={`flex items-center justify-between py-1.5 px-2.5 rounded-lg cursor-pointer transition-all text-xs ${isSelected ? 'bg-emerald-100 text-emerald-900 font-bold border border-emerald-300 shadow-2xs' : 'hover:bg-stone-100 text-stone-600 font-medium'}`}
                                                           onClick={() => handleSelectSession(session)}
                                                         >
-                                                          <div className={`w-2 h-2 rounded-full shrink-0 ${isSelected ? 'bg-emerald-600 ring-2 ring-emerald-300' : 'bg-stone-400'}`}></div>
-                                                          <span>Lần sửa chữa {session.repairNumber ? String(session.repairNumber).padStart(2, '0') : '01'}</span>
+                                                          <div className="flex items-center gap-2 min-w-0">
+                                                            <div className={`w-2 h-2 rounded-full shrink-0 ${isSelected ? 'bg-emerald-600 ring-2 ring-emerald-300' : 'bg-stone-400'}`}></div>
+                                                            <span className="truncate">{sessionNumberStr}</span>
+                                                          </div>
                                                         </div>
                                                       );
                                                     })}
@@ -747,20 +787,6 @@ export function PostRepairRecordsTab({
               </div>
             ) : (
               <div className="bg-white p-4 md:p-6 rounded-2xl border border-stone-200 shadow-sm flex-1 flex flex-col">
-                {/* Search query */}
-                <div className="mb-4 relative max-w-md">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Search className="h-4 w-4 text-stone-400" />
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Tìm theo số đăng ký xe, tên xe hoặc số hiệu..."
-                    value={typeof (searchQuery) === 'string' ? (searchQuery).normalize('NFC') : (searchQuery)}
-                    onChange={(e) => setSearchQuery(e.target.value.normalize('NFC'))}
-                    className="block w-full pl-10 pr-3 py-2 border border-stone-200 rounded-lg text-sm bg-stone-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium text-stone-800 placeholder:font-normal"
-                  />
-                </div>
-
                 {/* Tabs inside Main content */}
                 <div className="flex flex-wrap sm:flex-nowrap gap-2 mb-6 border-b border-stone-200 pb-3">
                   <button

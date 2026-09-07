@@ -12,15 +12,18 @@ import {
   PenTool,
   CheckCircle,
   ClipboardList,
+  Truck,
   Search,
   RefreshCw,
   X
 } from "lucide-react";
-import { Vehicle, RepairSession } from "../types";
+import { Vehicle, RepairSession, RepairCampaign } from "../types";
 import { DataService } from "../firebase";
 import { getCurrentUserSession } from "../services/dbService";
 import { canEditDocument, canDeleteDocument } from "../services/ownershipService";
+import { canEditModule } from "../services/permissionService";
 import { formatVNTime } from "../utils/time";
+import { resolveCampaignName, resolveSessionYear } from "../services/repairCampaignService";
 
 // Forms
 import { EngineInspectionBeforeRepairForm } from "./EngineInspectionBeforeRepairForm";
@@ -214,6 +217,7 @@ export const RepairRecordsTab = ({
 }: RepairRecordsTabProps) => {
   const [repairSessions, setRepairSessions] = useState<any[]>([]);
   const [repairForms, setRepairForms] = useState<any[]>([]);
+  const [repairCampaigns, setRepairCampaigns] = useState<RepairCampaign[]>([]);
   
   const [expandedYears, setExpandedYears] = useState<Record<string, boolean>>({});
   const [expandedCampaigns, setExpandedCampaigns] = useState<Record<string, boolean>>({});
@@ -227,6 +231,9 @@ export const RepairRecordsTab = ({
   const [activeFormId, setActiveFormId] = useState<string | undefined>(undefined);
   const [showForm, setShowForm] = useState(false);
 
+  const currentUser = getCurrentUserSession();
+  const canEdit = currentUser?.role ? canEditModule(currentUser.role, 'REPAIR') : false;
+
   useEffect(() => {
     loadData();
   }, []);
@@ -235,12 +242,15 @@ export const RepairRecordsTab = ({
     try {
       const sessions = (await DataService.load('repairSessions')) || [];
       const forms = (await DataService.load('repairForms')) || [];
+      const campaigns = (await DataService.load('repairCampaigns')) || [];
       
       const activeSessions = sessions.filter((s: any) => s.isDeleted !== true && s.isDeleted !== 'true');
       const activeForms = forms.filter((f: any) => f.isDeleted !== true && f.isDeleted !== 'true');
+      const activeCampaigns = campaigns.filter((c: any) => c.isDeleted !== true && c.isDeleted !== 'true');
       
       setRepairSessions(activeSessions);
       setRepairForms(activeForms);
+      setRepairCampaigns(activeCampaigns);
     } catch (err) {
       console.error("Error loading data:", err);
     }
@@ -283,10 +293,11 @@ export const RepairRecordsTab = ({
   }, [repairSessions, searchQuery]);
 
   const treeData = useMemo(() => {
-    const tree: any = {};
+    const tree: Record<string, Record<string, Record<string, Record<string, RepairSession[]>>>> = {};
     filteredSessions.forEach(session => {
-      const year = session.openedAt ? new Date(session.openedAt).getFullYear().toString() : "Không rõ năm";
-      const campaign = session.campaignName || "Không thuộc đợt";
+      if ((session as any).isDeleted) return;
+      const year = resolveSessionYear(session, repairCampaigns);
+      const campaign = session.campaignName || resolveCampaignName(session.campaignId, repairCampaigns, (session as any).campaignName) || "Không thuộc đợt";
       const vehicleName = session.vehicleName || "Xe không xác định";
       const plate = session.plateNumber || "Không rõ biển số";
       
@@ -297,8 +308,19 @@ export const RepairRecordsTab = ({
       
       tree[year][campaign][vehicleName][plate].push(session);
     });
+
+    Object.keys(tree).forEach((y) => {
+      Object.keys(tree[y]).forEach((c) => {
+        Object.keys(tree[y][c]).forEach((v) => {
+          Object.keys(tree[y][c][v]).forEach((p) => {
+            tree[y][c][v][p].sort((a, b) => (a.repairNumber || 1) - (b.repairNumber || 1));
+          });
+        });
+      });
+    });
+
     return tree;
-  }, [filteredSessions]);
+  }, [filteredSessions, repairCampaigns]);
 
   const toggleYear = (y: string) => setExpandedYears(prev => ({ ...prev, [y]: !prev[y] }));
   const toggleCampaign = (y: string, c: string) => setExpandedCampaigns(prev => ({ ...prev, [`${y}-${c}`]: !prev[`${y}-${c}`] }));
@@ -430,76 +452,126 @@ export const RepairRecordsTab = ({
         </div>
 
         <div className="p-3 overflow-y-auto flex-1 text-sm">
-          {Object.keys(treeData).sort((a,b)=>b.localeCompare(a)).map(year => {
+          {Object.keys(treeData).sort((a, b) => b.localeCompare(a)).map(year => {
             const isYearExpanded = isSearching || Boolean(expandedYears[year]);
+            const campaignsObj = treeData[year];
+            let yearCount = 0;
+            Object.values(campaignsObj).forEach((vehObj: any) => {
+              Object.values(vehObj).forEach((plateObj: any) => {
+                Object.values(plateObj).forEach((sessions: any) => {
+                  yearCount += sessions.length;
+                });
+              });
+            });
 
             return (
               <div key={year} className="mb-1">
+                {/* Cấp 1: Năm */}
                 <div 
-                  className="flex items-center gap-1 cursor-pointer py-1.5 px-2 hover:bg-stone-100 rounded text-stone-800 font-semibold"
+                  className="flex items-center justify-between cursor-pointer py-1.5 px-2 hover:bg-stone-100 rounded-lg transition-colors group"
                   onClick={() => toggleYear(year)}
                 >
-                  {isYearExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                  {year}
+                  <div className="flex items-center gap-1.5 text-stone-800 font-bold">
+                    {isYearExpanded ? <ChevronDown className="w-4 h-4 text-emerald-700 shrink-0" /> : <ChevronRight className="w-4 h-4 text-stone-400 shrink-0" />}
+                    <Folder className="w-4 h-4 text-amber-500 shrink-0" />
+                    <span>{year}</span>
+                  </div>
+                  <span className="text-[10px] text-stone-500 font-medium px-1.5 py-0.5 bg-stone-100 group-hover:bg-stone-200 rounded-md transition-colors whitespace-nowrap">
+                    {String(yearCount).padStart(2, '0')} hồ sơ
+                  </span>
                 </div>
                 
                 {isYearExpanded && (
-                  <div className="pl-4 border-l border-stone-200 ml-2">
-                    {Object.keys(treeData[year]).map(campaign => {
-                      const isCampaignExpanded = isSearching || Boolean(expandedCampaigns[`${year}-${campaign}`]);
+                  <div className="pl-3 border-l border-stone-200 ml-3.5 space-y-0.5 mt-0.5">
+                    {Object.keys(campaignsObj).map(campaign => {
+                      const campaignKey = `${year}-${campaign}`;
+                      const isCampaignExpanded = isSearching || Boolean(expandedCampaigns[campaignKey]);
+                      const vehiclesObj = campaignsObj[campaign];
+                      let campaignCount = 0;
+                      Object.values(vehiclesObj).forEach((plateObj: any) => {
+                        Object.values(plateObj).forEach((sessions: any) => {
+                          campaignCount += sessions.length;
+                        });
+                      });
 
                       return (
                         <div key={campaign}>
+                          {/* Cấp 2: Đợt sửa chữa */}
                           <div 
-                            className="flex items-center gap-1 cursor-pointer py-1 px-2 hover:bg-stone-100 rounded text-stone-700 font-medium"
+                            className="flex items-center justify-between cursor-pointer py-1 px-2 hover:bg-stone-100 rounded-lg transition-colors group"
                             onClick={() => toggleCampaign(year, campaign)}
                           >
-                            {isCampaignExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                            {campaign}
+                            <div className="flex items-center gap-1.5 text-stone-700 font-semibold text-xs min-w-0 pr-2">
+                              {isCampaignExpanded ? <ChevronDown className="w-3.5 h-3.5 text-emerald-700 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />}
+                              <Folder className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                              <span className="truncate">{campaign}</span>
+                            </div>
+                            <span className="text-[10px] text-stone-500 font-medium px-1.5 py-0.5 bg-stone-100 group-hover:bg-stone-200 rounded-md transition-colors shrink-0 whitespace-nowrap">
+                              {String(campaignCount).padStart(2, '0')} hồ sơ
+                            </span>
                           </div>
                           
                           {isCampaignExpanded && (
-                            <div className="pl-4 border-l border-stone-200 ml-2">
-                              {Object.keys(treeData[year][campaign]).map(vehicle => {
-                                const isVehicleExpanded = isSearching || Boolean(expandedVehicles[`${year}-${campaign}-${vehicle}`]);
+                            <div className="pl-3 border-l border-stone-200 ml-3 space-y-0.5 mt-0.5">
+                              {Object.keys(vehiclesObj).map(vehicle => {
+                                const vehicleKey = `${year}-${campaign}-${vehicle}`;
+                                const isVehicleExpanded = isSearching || Boolean(expandedVehicles[vehicleKey]);
+                                const platesObj = vehiclesObj[vehicle];
 
                                 return (
                                   <div key={vehicle}>
+                                    {/* Cấp 3: Tên/chủng loại xe */}
                                     <div 
-                                      className="flex items-center gap-1 cursor-pointer py-1 px-2 hover:bg-stone-100 rounded text-stone-700"
+                                      className="flex items-center gap-1.5 cursor-pointer py-1 px-2 hover:bg-stone-100 rounded-lg text-stone-700 text-xs font-medium transition-colors"
                                       onClick={() => toggleVehicle(year, campaign, vehicle)}
                                     >
-                                      {isVehicleExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                                      {vehicle}
+                                      {isVehicleExpanded ? <ChevronDown className="w-3.5 h-3.5 text-emerald-700 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-stone-400 shrink-0" />}
+                                      <Truck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                      <span className="truncate">{vehicle}</span>
                                     </div>
                                     
                                     {isVehicleExpanded && (
-                                      <div className="pl-4 border-l border-stone-200 ml-2">
-                                        {Object.keys(treeData[year][campaign][vehicle]).map(plate => {
-                                          const isPlateExpanded = isSearching || Boolean(expandedPlates[`${year}-${campaign}-${vehicle}-${plate}`]);
+                                      <div className="pl-3 border-l border-stone-200 ml-3 space-y-0.5 mt-0.5">
+                                        {Object.keys(platesObj).map(plate => {
+                                          const plateKey = `${year}-${campaign}-${vehicle}-${plate}`;
+                                          const isPlateExpanded = isSearching || Boolean(expandedPlates[plateKey]);
+                                          const sessionsList = platesObj[plate];
 
                                           return (
                                             <div key={plate}>
+                                              {/* Cấp 4: Biển số xe */}
                                               <div 
-                                                className="flex items-center gap-1 cursor-pointer py-1 px-2 hover:bg-stone-100 rounded text-stone-600"
+                                                className="flex items-center gap-1.5 cursor-pointer py-1 px-2 hover:bg-stone-100 rounded-lg text-stone-600 text-xs transition-colors"
                                                 onClick={() => togglePlate(year, campaign, vehicle, plate)}
                                               >
-                                                {isPlateExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                                                {plate}
+                                                {isPlateExpanded ? <ChevronDown className="w-3 h-3 text-emerald-700 shrink-0" /> : <ChevronRight className="w-3 h-3 text-stone-400 shrink-0" />}
+                                                <span className="font-mono font-bold text-stone-800">{plate}</span>
                                               </div>
                                               
                                               {isPlateExpanded && (
                                                 <div className="pl-3 py-1 space-y-1">
-                                                  {treeData[year][campaign][vehicle][plate].map((session: any) => (
-                                                    <div 
-                                                      key={session.id}
-                                                      className={`flex items-center gap-2 py-1.5 px-3 rounded-md cursor-pointer transition-colors ${selectedRepairSession?.id === session.id ? 'bg-emerald-100 text-emerald-800 font-medium' : 'hover:bg-stone-100 text-stone-600'}`}
-                                                      onClick={() => onSelectRepairSession?.(session)}
-                                                    >
-                                                      <div className={`w-1.5 h-1.5 rounded-full ${selectedRepairSession?.id === session.id ? 'bg-emerald-500' : 'bg-stone-400'}`}></div>
-                                                      Lần sửa chữa {session.repairNumber || '01'}
-                                                    </div>
-                                                  ))}
+                                                  {sessionsList.map((session: any, idx: number) => {
+                                                    const isSelected = selectedRepairSession?.id === session.id;
+                                                    const sessionNumberStr = `Lần sửa chữa ${String(session.repairNumber || idx + 1).padStart(2, '0')}`;
+
+                                                    return (
+                                                      /* Cấp 5: Lần sửa chữa */
+                                                      <div 
+                                                        key={session.id}
+                                                        className={`flex items-center justify-between py-1.5 px-2.5 rounded-lg cursor-pointer transition-all text-xs ${
+                                                          isSelected 
+                                                            ? 'bg-emerald-100 text-emerald-900 font-bold border border-emerald-300 shadow-2xs' 
+                                                            : 'hover:bg-stone-100 text-stone-600 font-medium'
+                                                        }`}
+                                                        onClick={() => onSelectRepairSession?.(session)}
+                                                      >
+                                                        <div className="flex items-center gap-2 min-w-0">
+                                                          <div className={`w-2 h-2 rounded-full shrink-0 ${isSelected ? 'bg-emerald-600 ring-2 ring-emerald-300' : 'bg-stone-400'}`}></div>
+                                                          <span className="truncate">{sessionNumberStr}</span>
+                                                        </div>
+                                                      </div>
+                                                    );
+                                                  })}
                                                 </div>
                                               )}
                                             </div>
@@ -597,7 +669,7 @@ export const RepairRecordsTab = ({
                                 >
                                   🔒 Đã hoàn tất bàn giao
                                 </button>
-                              ) : (
+                              ) : canEdit ? (
                                 <button
                                   onClick={() => handleCreateForm(template.id)}
                                   className="flex-shrink-0 text-xs flex items-center gap-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 px-3 py-1.5 rounded-lg font-medium transition-colors"
@@ -605,7 +677,7 @@ export const RepairRecordsTab = ({
                                   <Plus className="w-3.5 h-3.5" />
                                   Tạo phiếu
                                 </button>
-                              )}
+                              ) : null}
                             </div>
                             
                             <div className="mt-auto pt-3 border-t border-stone-200/60">
@@ -629,7 +701,7 @@ export const RepairRecordsTab = ({
                                         <span className="text-stone-400">—</span>
                                         <span className="text-stone-600 truncate">{form.createdByName || form.createdBy}</span>
                                       </div>
-                                      {!isClosed && (
+                                      {!isClosed && canDeleteDocument(currentUser, form, 'REPAIR') && (
                                         <button
                                           onClick={(e) => handleDeleteForm(e, form.id)}
                                           className="text-stone-300 hover:text-red-500 hover:bg-red-50 p-1.5 rounded transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 flex-shrink-0"
@@ -686,23 +758,26 @@ export const RepairRecordsTab = ({
               </button>
             </div>
 
-            {selectedRepairSession && isRepairSessionClosed(selectedRepairSession) && (
+            {(selectedRepairSession && isRepairSessionClosed(selectedRepairSession)) || !canEdit ? (
               <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-800 font-medium flex items-center justify-between">
                 <span>
-                  ⚠️ Hồ sơ sửa chữa Lần {selectedRepairSession.repairNumber || '01'} đã hoàn tất bàn giao và đã đóng. Chế độ CHỈ XEM (xem, in, xuất PDF). Không thể sửa đổi hay lưu dữ liệu.
+                  ⚠️ {selectedRepairSession && isRepairSessionClosed(selectedRepairSession) 
+                    ? `Hồ sơ sửa chữa Lần ${selectedRepairSession.repairNumber || '01'} đã hoàn tất bàn giao và đã đóng.` 
+                    : 'Tài khoản ở chế độ CHỈ XEM.'} Chế độ CHỈ XEM (xem, in, xuất PDF). Không thể sửa đổi hay lưu dữ liệu.
                 </span>
               </div>
-            )}
+            ) : null}
             
-            <div className={`flex-1 overflow-y-auto p-0 relative bg-stone-100 ${selectedRepairSession && isRepairSessionClosed(selectedRepairSession) ? 'repair-form-read-only-container' : ''}`}>
-              {selectedRepairSession && isRepairSessionClosed(selectedRepairSession) && (
+            <div className={`flex-1 overflow-y-auto p-0 relative bg-stone-100 ${!canEdit || (selectedRepairSession && isRepairSessionClosed(selectedRepairSession)) ? 'repair-form-read-only-container' : ''}`}>
+              {(!canEdit || (selectedRepairSession && isRepairSessionClosed(selectedRepairSession))) && (
                 <style>{`
                   .repair-form-read-only-container input:not([type="button"]):not([type="submit"]),
                   .repair-form-read-only-container textarea,
                   .repair-form-read-only-container select {
                     pointer-events: none !important;
                   }
-                  .repair-form-read-only-container #delete-button-selector {
+                  .repair-form-read-only-container #delete-button-selector,
+                  .repair-form-read-only-container button:has(svg.lucide-save) {
                     display: none !important;
                   }
                 `}</style>
@@ -716,8 +791,8 @@ export const RepairRecordsTab = ({
                   stageName={STAGES.find(s => s.templates.some(t => t.id === activeFormTemplate))?.label}
                   templateType={activeFormTemplate}
                   targetSessionId={selectedRepairSession?.id}
-                  readOnly={selectedRepairSession ? isRepairSessionClosed(selectedRepairSession) : false}
-                  isClosed={selectedRepairSession ? isRepairSessionClosed(selectedRepairSession) : false}
+                  readOnly={!canEdit || (selectedRepairSession ? isRepairSessionClosed(selectedRepairSession) : false)}
+                  isClosed={!canEdit || (selectedRepairSession ? isRepairSessionClosed(selectedRepairSession) : false)}
                   onSaved={handleFormSaved}
                   onCancel={handleFormCancel}
                   onClose={handleFormCancel}

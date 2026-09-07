@@ -30,7 +30,8 @@ const getRoleLabel = (role: string | undefined | null): string => {
     'trung_doi_truong': 'Trung đội trưởng',
     'to_truong': 'Tổ trưởng',
     'kcs': 'Nhân viên KCS',
-    'tro_ly_ky_thuat': 'Trợ lý kỹ thuật'
+    'tro_ly_ky_thuat': 'Trợ lý kỹ thuật',
+    'quan_ly_cap_tren': 'Quản lý cấp trên'
   };
   return roleMap[role] || role;
 };
