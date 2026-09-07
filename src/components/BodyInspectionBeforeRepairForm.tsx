@@ -580,19 +580,29 @@ export const BodyInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, exist
           </div>
 
           <div className="mb-6">
-            <table className="w-full border-collapse border-y border-x sm:border border-stone-300 sm:border-black text-[15px]">
+            <table className="w-full border-collapse border-y border-x sm:border border-stone-300 sm:border-black text-[15px] sm:table-fixed print:table-fixed">
+              <colgroup className="hidden sm:table-column-group">
+                <col style={{ width: '5%' }} />
+                <col style={{ width: '27%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '13%' }} />
+                <col style={{ width: '17%' }} />
+                <col style={{ width: '16%' }} />
+                <col style={{ width: '15%' }} />
+              </colgroup>
               <thead className="hidden sm:table-header-group">
                 <tr>
-                  <th className="border border-black px-2 py-2 text-center w-12 font-bold">TT</th>
-                  <th className="border border-black px-2 py-2 text-center font-bold">NỘI DUNG KIỂM TRA</th>
-                  <th className="border border-black px-2 py-2 text-center w-24 font-bold">Đơn vị đo</th>
-                  <th className="border border-black px-2 py-2 text-center w-40 font-bold">Yêu cầu</th>
-                  <th className="border border-black px-2 py-2 text-center w-48 font-bold">Thực tế</th>
-                  <th className="border border-black px-2 py-2 text-center w-36 font-bold leading-tight">
+                  <th style={{ width: '5%' }} className="border border-black px-1 py-2 text-center align-middle font-bold">TT</th>
+                  <th style={{ width: '27%' }} className="border border-black px-2 py-2 text-center align-middle font-bold">NỘI DUNG KIỂM TRA</th>
+                  <th style={{ width: '7%' }} className="border border-black px-1 py-2 text-center align-middle font-bold">Đơn vị đo</th>
+                  <th style={{ width: '13%' }} className="border border-black px-1.5 py-2 text-center align-middle font-bold">Yêu cầu</th>
+                  <th style={{ width: '17%' }} className="border border-black px-1.5 py-2 text-center align-middle font-bold">Thực tế</th>
+                  <th style={{ width: '16%' }} className="border border-black px-1.5 py-2 text-center align-middle font-bold">Người thực hiện</th>
+                  <th style={{ width: '15%' }} className="border border-black px-1 py-2 text-center align-middle font-bold leading-tight">
                     <div>Ngày thực hiện</div>
                     <div>Ngày hoàn thành</div>
                   </th>
-                  </tr>
+                </tr>
               </thead>
               <tbody>
                 {(() => {
@@ -606,35 +616,49 @@ export const BodyInspectionBeforeRepairForm: React.FC<Props> = ({ vehicle, exist
                       <React.Fragment key={item.id || index}>
                         {showCategoryHeader && (
                           <tr className="bg-stone-50 print:bg-stone-100 font-bold block sm:table-row">
-                            <td colSpan={5} className="border-y border-x sm:border border-stone-300 sm:border-black px-4 py-2 text-left text-[14px] mt-4 sm:mt-0 block sm:table-cell">
+                            <td colSpan={7} className="border-y border-x sm:border border-stone-300 sm:border-black px-4 py-2 text-left text-[14px] mt-4 sm:mt-0 block sm:table-cell">
                               {item.category}
                             </td>
                           </tr>
                         )}
                         <tr className="flex flex-col sm:table-row hover:bg-stone-50/50 transition-colors border-b-2 sm:border-b border-stone-300 sm:border-black mb-2 sm:mb-0 h-auto sm:h-auto">
-                          <td className="hidden sm:table-cell border border-black px-2 py-2 text-center">{item.stt || (index + 1)}</td>
-                          <td className="border-t border-x sm:border-y-0 sm:border-l-0 sm:border-r border-stone-300 sm:border-black p-2.5 sm:px-2 font-medium bg-stone-100 sm:bg-transparent">
+                          <td className="hidden sm:table-cell border border-black px-1 py-2 text-center align-middle font-medium">{item.stt || (index + 1)}</td>
+                          <td className="border-t border-x sm:border-y-0 sm:border-l-0 sm:border-r border-stone-300 sm:border-black p-2.5 sm:px-2.5 sm:py-2 font-medium bg-stone-100 sm:bg-transparent align-middle text-left break-words">
                             <span className="sm:hidden font-bold mr-1">{item.stt || (index + 1)}.</span>
                             {item.content}
                           </td>
-                          <td className="border-x border-b sm:border border-stone-300 sm:border-black p-2 sm:p-2 flex sm:table-cell items-center justify-between bg-white sm:bg-transparent">
+                          <td className="border-x border-b sm:border border-stone-300 sm:border-black p-2 sm:p-1 flex sm:table-cell items-center justify-between bg-white sm:bg-transparent align-middle text-center break-words">
                             <span className="sm:hidden text-xs text-stone-500 font-medium ml-1">Đơn vị đo</span>
-                            <span className="text-right sm:text-center text-stone-800 whitespace-pre-line">{item.unit}</span>
+                            <span className="text-right sm:text-center text-stone-800 whitespace-pre-line text-sm">{item.unit}</span>
                           </td>
-                          <td className="border-x border-b sm:border border-stone-300 sm:border-black p-2 flex sm:table-cell items-center justify-between bg-white sm:bg-transparent">
+                          <td className="border-x border-b sm:border border-stone-300 sm:border-black p-2 sm:px-1.5 sm:py-2 flex sm:table-cell items-center justify-between bg-white sm:bg-transparent align-middle text-center break-words">
                             <span className="sm:hidden text-xs text-stone-500 font-medium ml-1">Yêu cầu</span>
-                            <span className="text-right sm:text-center text-stone-800 font-medium sm:font-normal whitespace-pre-line">{item.requirement}</span>
+                            <span className="text-right sm:text-center text-stone-800 font-medium sm:font-normal whitespace-pre-line text-sm">{item.requirement}</span>
                           </td>
-                          <td className="border-x border-b sm:border border-stone-300 sm:border-black p-1 flex sm:table-cell flex-col sm:flex-row items-stretch sm:items-center justify-between bg-white sm:bg-transparent">
+                          <td className="border-x border-b sm:border border-stone-300 sm:border-black p-1 flex sm:table-cell flex-col sm:flex-row items-stretch sm:items-center justify-between bg-white sm:bg-transparent align-middle">
                             <span className="sm:hidden text-xs text-stone-500 font-medium ml-2 mt-1 mb-1">Thực tế</span>
 
                             <AutoResizeTextarea 
                               value={typeof (item.actual || '') === 'string' ? (item.actual || '').normalize('NFC') : (item.actual || '')}
                               onChange={(e) => handleItemChange(index, e.target.value.normalize('NFC'))}
-                              className="w-full h-full min-h-[36px] sm:min-h-[auto] bg-stone-50 sm:bg-transparent border border-stone-200 sm:border-transparent outline-none px-3 sm:px-2 py-2 text-left sm:text-center rounded sm:rounded-none font-bold text-stone-800 sm:text-emerald-700 print:text-black"
+                              className="w-full h-full min-h-[36px] sm:min-h-[auto] bg-stone-50 sm:bg-transparent border border-stone-200 sm:border-transparent outline-none px-2 py-1.5 text-left sm:text-center rounded sm:rounded-none font-bold text-stone-800 sm:text-emerald-700 print:text-black text-sm"
                             />
                           </td>
-                            <td className="border border-black px-1.5 py-1 text-center align-middle">
+                          <td className="border-x border-b sm:border border-stone-300 sm:border-black p-1 flex sm:table-cell flex-col sm:flex-row items-stretch sm:items-center justify-between bg-white sm:bg-transparent align-middle">
+                            <span className="sm:hidden text-xs text-stone-500 font-medium ml-2 mt-1 mb-1">Người thực hiện</span>
+
+                            <AutoResizeTextarea 
+                              value={typeof (item.performer || '') === 'string' ? (item.performer || '').normalize('NFC') : (item.performer || '')}
+                              onChange={(e) => {
+                                const newItems = [...formData.items];
+                                newItems[index].performer = e.target.value.normalize('NFC');
+                                setFormData({ ...formData, items: newItems });
+                              }}
+                              placeholder="Nhập người thực hiện"
+                              className="w-full h-full min-h-[36px] sm:min-h-[auto] bg-stone-50 sm:bg-transparent border border-stone-200 sm:border-transparent outline-none px-2 py-1.5 text-left sm:text-center rounded sm:rounded-none font-medium text-stone-800 sm:text-emerald-700 print:text-black text-sm"
+                            />
+                          </td>
+                            <td className="border border-black px-1 py-1 text-center align-middle">
                               <div className="flex flex-col items-center justify-center gap-1 text-xs">
                                 <div className="w-full">
                                   <input 

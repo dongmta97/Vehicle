@@ -280,4 +280,17 @@ export interface TaskItem {
 export type TaskPlanItem = TaskItem;
 export type TaskReportItem = TaskItem;
 
+export interface InspectionBeforeRepairItem {
+  id: number | string;
+  stt?: number | string;
+  category?: string;
+  content: string;
+  unit: string;
+  requirement: string;
+  actual: string;
+  performer?: string;
+  ngayThucHien?: string;
+  ngayHoanThanh?: string;
+}
+
 
